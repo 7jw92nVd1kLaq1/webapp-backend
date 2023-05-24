@@ -1,17 +1,26 @@
 from rest_framework import serializers
 
-from veryusefulproject.orders.models import Business, BusinessIndustry
+from veryusefulproject.orders.models import Business, BusinessIndustry, BusinessLogo
+
+
+class BusinessLogoSerializer(serializers.ModelSerializer):
+    business = serializers.SlugRelatedField(read_only=True, slug_field="name")
+
+    class Meta:
+        model = BusinessLogo
 
 
 class BusinessSerializer(serializers.ModelSerializer):
+    industry = serializers.SlugRelatedField(read_only=True, slug_field="name")
+
     class Meta:
         model = Business
-        field = ["ticker", "desc", "name"]
+        fields = ["ticker", "name", "industry"]
 
 
 class BusinessIndustrySerializer(serializers.ModelSerializer):
-    businesses = BusinessSerializer(many=True, read_only=True)
+    businesses = BusinessSerializer(many=True)
 
     class Meta:
         model = BusinessIndustry
-        fields = ["name", "desc", "businesses"]
+        fields = ["id", "name", "businesses"]

@@ -109,3 +109,69 @@ class RegisterForm(forms.Form):
             raise ValidationError(_("Your nickname must not be shorter than 5 characters"))
 
         return data
+
+
+class PasswordRequiredForm(forms.Form):
+    current_password = forms.CharField(min_length=8)
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super(PasswordRequiredForm, self).__init__(*args,  **kwargs)
+
+    def clean_current_password(self):
+        data = self.cleaned_data['current_password']
+
+        if not self.user.check_password(data):
+            raise ValidationError(_("You failed to provide the current password."))
+
+        return data
+
+
+class NicknameChangeForm(PasswordRequiredForm):
+    nickname = forms.CharField(min_length=4, max_length=255)
+
+    def clean_nickname(self):
+        data = self.cleaned_data['nickname']
+
+        if User.objects.filter(nickname=data).exists():
+            raise ValidationError(_("There is already a user with this nickname. Try the different nickname."))
+
+        if not data.isalnum():
+            raise ValidationError(_("Your nickname must consist of alphanumeric characters."))
+
+        return data
+
+
+class PasswordChangeForm(PasswordRequiredForm):
+    new_password = forms.CharField(min_length=8)
+    new_password_confirmation = forms.CharField(min_length=8)
+
+    def clean_new_password(self):
+        data = self.cleaned_data['new_password']
+
+        if not re.search("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$", data):
+            raise ValidationError(
+                _("Your new password must contain at least one uppercase, lowercase, special, and numeric characters."))
+
+        return data
+
+    def clean_password_confirmation(self):
+        data = self.cleaned_data["new_password_confirmation"]
+        password = self.cleaned_data["new_password"]
+
+        if data != password:
+            raise ValidationError(_("Your new password and re-typed password don't match."))
+
+        return data
+
+
+class SecondPasswordChangeForm(PasswordChangeForm):
+    current_second_password = forms.CharField(min_length=8)
+
+    def clean_current_second_password(self):
+        data = self.cleaned_data['current_second_password']
+
+        if not self.user.check_second_password(data):
+            raise ValidationError(_("You failed to provide the right, current second password."))
+
+        return data

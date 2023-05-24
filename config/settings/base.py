@@ -331,7 +331,7 @@ ACCOUNT_FORMS = {"signup": "veryusefulproject.users.forms.UserSignupForm"}
 SOCIALACCOUNT_ADAPTER = "veryusefulproject.users.adapters.SocialAccountAdapter"
 # https://django-allauth.readthedocs.io/en/latest/forms.html
 SOCIALACCOUNT_FORMS = {"signup": "veryusefulproject.users.forms.UserSocialSignupForm"}
-SITE_ID = 1
+SITE_ID = 0
 
 
 # django-rest-framework

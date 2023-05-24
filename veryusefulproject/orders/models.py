@@ -19,13 +19,13 @@ class BusinessIndustry(BaseModel):
 
 class Business(BaseModel):
     ticker = models.CharField(max_length=16, primary_key=True)
-    industry = models.ForeignKey(BusinessIndustry, on_delete=models.SET_NULL, null=True)
+    industry = models.ForeignKey(BusinessIndustry, related_name="businesses", on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=64)
     desc = models.TextField()
 
 
 class BusinessLogo(BaseModel):
-    business = models.ForeignKey(Business, on_delete=models.SET_NULL, null=True)
+    business = models.ForeignKey(Business, related_name="logos", on_delete=models.SET_NULL, null=True)
     image = models.ImageField(upload_to="images/logo/%Y/%m/%d")
 
 

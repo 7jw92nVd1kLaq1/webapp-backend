@@ -8,40 +8,24 @@ User = get_user_model()
 password_regex = "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$"
 
 
-class UserSerializer(serializers.ModelSerializer):
-    password = serializers.RegexField(regex=password_regex)
-    password_confirmation = serializers.RegexField(regex=password_regex)
-    second_password = serializers.RegexField(regex=password_regex)
-    second_password_confirmation = serializers.RegexField(regex=password_regex)
-
-    class Meta:
-        model = User
-        fields = ["username", "nickname", "password", "email", "password_confirmation",
-                  "second_password", "second_password_confirmation", "url"]
-
-        extra_kwargs = {
-            "url": {"view_name": "api:user-detail", "lookup_field": "username"},
-            "password": {"write_only": True},
-            "second_password": {"write_only": True},
-            "password_confirmation": {"write_only": True},
-            "second_password_confirmation": {"write_only": True},
-            "email": {"write_only": True},
-        }
+class UserSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField(required=False)
+    nickname = serializers.CharField(max_length=255)
+    password = serializers.RegexField(regex=password_regex, write_only=True)
+    password_confirmation = serializers.RegexField(regex=password_regex, write_only=True)
+    second_password = serializers.RegexField(regex=password_regex, write_only=True)
+    second_password_confirmation = serializers.RegexField(regex=password_regex, write_only=True)
 
     def create(self, validated_data):
         user = User.objects.create_user(validated_data['username'],
-                                        validated_data['password'], validated_data['email'])
-
-        user.set_nickname(validated_data['nickname'])
-        user.set_second_password(validated_data['second_password'])
-        user.save()
-
-        print(f"User named {validated_data['username']} successfully created!")
-
+                                        validated_data['email'], validated_data['password'], second_password=validated_data['second_password'], nickname=validated_data['nickname'])
         return user
 
     def validate(self, attrs):
-        form = RegisterForm(attrs)
-        if not form.is_valid():
-            raise serializers.ValidationError(form.errors)
-        return super().validate(attrs)
+        if attrs['password_confirmation'] or attrs['second_password_confirmation']:
+            form = RegisterForm(attrs)
+            if not form.is_valid():
+                raise serializers.ValidationError(form.errors)
+
+        return attrs

@@ -1,11 +1,41 @@
-from django.contrib.auth.models import AbstractUser, Permission
+from django.apps import apps
+from django.contrib.auth.models import AbstractUser, Permission, UserManager
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 from django.urls import reverse
+from django.utils.crypto import get_random_string
 from django.utils.translation import gettext_lazy as _
 
 from veryusefulproject.core.models import BaseModel
 
+class CustomUserManager(UserManager):
+    def _create_user(self, username, email, password, second_password, **extra_fields):
+        """
+        Create and save a user with the given username, email, and password.
+        """
+        if not username:
+            raise ValueError("The given username must be set")
+        email = self.normalize_email(email)
+        # Lookup the real model class from the global app registry so this
+        # manager method can be used in migrations. This is fine because
+        # managers are by definition working on the real model.
+        GlobalUserModel = apps.get_model(
+            self.model._meta.app_label, self.model._meta.object_name
+        )
+        username = GlobalUserModel.normalize_username(username)
+        user = self.model(username=username, email=email, **extra_fields)
+        user.password = make_password(password)
+        if not second_password:
+            user.set_second_password(get_random_string(255))
+        else:
+            user.set_second_password(second_password)
+        user.save(using=self._db)
+        return user
+
+    def create_user(self, username, email=None, password=None, second_password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", False)
+        extra_fields.setdefault("is_superuser", False)
+        return self._create_user(username, email, password, second_password, **extra_fields)
 
 class User(AbstractUser):
     """
@@ -13,7 +43,7 @@ class User(AbstractUser):
     If adding fields that need to be filled at user signup,
     check forms.SignupForm and forms.SocialSignupForms accordingly.
     """
-
+    objects = CustomUserManager()
     nickname = models.CharField(
         _("Nickname of User"),
         blank=True,

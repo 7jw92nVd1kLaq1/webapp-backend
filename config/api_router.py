@@ -3,7 +3,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from veryusefulproject.core.api.views import CsrfView
-from veryusefulproject.users.api.views import UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
+from veryusefulproject.users.api.views import CheckJWTAccessTokenValidityView, UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
 
 if settings.DEBUG:
     router = DefaultRouter()
@@ -27,4 +27,5 @@ urlpatterns += (
     path("renew-acc-token/", RenewJWTAccessTokenView.as_view(), name="renew-acc-token"),
     path("delete-tokens/", DeleteJWTTokensView.as_view(), name="delete-tokens"),
     path("check-ref-token/", CheckJWTRefreshTokenValidityView.as_view(), name="check-ref-token"),
+    path("check-acc-token/", CheckJWTAccessTokenValidityView.as_view(), name="check-acc-token"), 
 )
