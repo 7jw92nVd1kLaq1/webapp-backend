@@ -98,6 +98,7 @@ LOCAL_APPS = [
     "veryusefulproject.carts",
     "veryusefulproject.currencies",
     "veryusefulproject.customer_service",
+    "veryusefulproject.management",
     "veryusefulproject.notifications",
     "veryusefulproject.offer_marketplace",
     "veryusefulproject.payments",

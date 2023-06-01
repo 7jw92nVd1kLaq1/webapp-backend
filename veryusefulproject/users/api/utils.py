@@ -30,7 +30,7 @@ def _complete_social_login(request, sociallogin):
     assert User.objects.filter(username=sociallogin.user.username).exists()
 
     tokens = get_tokens_for_user(sociallogin.user)
-    response = HttpResponseRedirect("https://localhost:5173/")
+    response = HttpResponseRedirect(settings.FRONTEND_URL)
     response = set_tokens_in_cookie(tokens, response)
 
     return response
@@ -38,7 +38,7 @@ def _complete_social_login(request, sociallogin):
 
 # delete COOKIES if the set cookies are invalid
 def _social_login_redirect(request, sociallogin):
-    response = HttpResponseRedirect("https://localhost:5173/")
+    response = HttpResponseRedirect(settings.FRONTEND_URL)
     user_refresh_token = request.COOKIES.get(settings.SIMPLE_JWT['AUTH_REFRESH_COOKIE'], None)
     if user_refresh_token:
         try:

@@ -8,6 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from veryusefulproject.core.models import BaseModel
 
+
 class CustomUserManager(UserManager):
     def _create_user(self, username, email, password, second_password, **extra_fields):
         """
@@ -37,6 +38,7 @@ class CustomUserManager(UserManager):
         extra_fields.setdefault("is_superuser", False)
         return self._create_user(username, email, password, second_password, **extra_fields)
 
+
 class User(AbstractUser):
     """
     Default custom user model for veryUsefulProject.
@@ -50,6 +52,13 @@ class User(AbstractUser):
         max_length=255,
         unique=True)
     second_password = models.CharField(_("Second password"), max_length=128)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['username']),
+            models.Index(fields=['nickname']),
+            models.Index(fields=['date_joined']),
+        ]
 
     def get_absolute_url(self) -> str:
         """Get URL for user's detail view.
@@ -95,7 +104,7 @@ class Role(BaseModel):
     name = models.CharField(max_length=128)
     desc = models.TextField()
     permissions = models.ManyToManyField(Permission)
-    roles = models.ManyToManyField(User)
+    users = models.ManyToManyField(User)
 
 
 class UserActivityType(BaseModel):

@@ -58,3 +58,7 @@ INSTALLED_APPS += ["django_extensions"]  # noqa: F405
 CELERY_TASK_EAGER_PROPAGATES = True
 # Your stuff...
 # ------------------------------------------------------------------------------
+
+FRONTEND_URL = "https://localhost:5173/"
+PASSWORD_REQUIREMENT_REGEX = "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$"
+USER_SUSPENDED_ROLE_NAME = "Suspended"

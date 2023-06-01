@@ -55,8 +55,8 @@ class Order(BaseModel):
     company = models.ForeignKey(Business, on_delete=models.RESTRICT)
     payment = models.OneToOneField(OrderPayment, on_delete=models.RESTRICT)
     address = models.ForeignKey(OrderAddress, on_delete=models.RESTRICT)
-    customer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="order_customer")
-    intermediary = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="order_intermediary")
+    customer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="orders_as_customer")
+    intermediary = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="orders_as_intermediary")
     tracking = models.OneToOneField(OrderTrackingNumber, on_delete=models.SET_NULL, null=True)
     additional_request = models.TextField(default="")
 
@@ -70,19 +70,19 @@ class OrderDispute(BaseModel):
 
 
 class OrderDisputeMessage(BaseModel):
-    order_dispute = models.ForeignKey(OrderDispute, on_delete=models.RESTRICT)
+    order_dispute = models.ForeignKey(OrderDispute, on_delete=models.RESTRICT, related_name="messages")
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     message = models.TextField()
 
 
 class OrderMessage(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True)
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="messages")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     message = models.TextField()
 
 
 class OrderItem(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True)
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_items")
     image_url = models.URLField()
     name = models.TextField()
     quantity = models.PositiveIntegerField()
@@ -97,7 +97,7 @@ class OrderIntermediaryBlacklist(BaseModel):
 
 
 class OrderReview(BaseModel):
-    order = models.OneToOneField(Order, on_delete=models.SET_NULL, null=True)
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_reviews")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="order_review_user")
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="order_review_author")
     title = models.TextField()

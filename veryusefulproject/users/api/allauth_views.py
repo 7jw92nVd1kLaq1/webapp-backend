@@ -21,6 +21,7 @@ from .utils import complete_social_login
 
 User = get_user_model()
 
+
 class ModifiedSocialLogin(SocialLogin):
     def save(self, request, connect=False):
         """
@@ -38,7 +39,7 @@ class ModifiedSocialLogin(SocialLogin):
             self.token.account = self.account
             self.token.save()
         if connect:
-        # TODO: Add any new email addresses automatically?
+            # TODO: Add any new email addresses automatically?
             pass
         else:
             setup_user_email(request, user, self.email_addresses)
@@ -59,12 +60,12 @@ class ModifiedSocialLogin(SocialLogin):
                 assert not self.token.pk
                 try:
                     t = SocialToken.objects.get(
-                    account=self.account, app=self.token.app
+                        account=self.account, app=self.token.app
                     )
                     t.token = self.token.token
                     if self.token.token_secret:
-                    # only update the refresh token if we got one
-                    # many oauth2 providers do not resend the refresh token
+                        # only update the refresh token if we got one
+                        # many oauth2 providers do not resend the refresh token
                         t.token_secret = self.token.token_secret
                     t.expires_at = self.token.expires_at
                     t.save()
@@ -75,7 +76,7 @@ class ModifiedSocialLogin(SocialLogin):
             return True
         except SocialAccount.DoesNotExist:
             return False
-            
+
 
 class OAuth2CallbackView(OAuth2View):
     def dispatch(self, request, *args, **kwargs):
@@ -120,4 +121,4 @@ class OAuth2CallbackView(OAuth2View):
             print("FAILEDDDD!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print(c)
 
-        return HttpResponseRedirect("https://localhost:5173/")
+        return HttpResponseRedirect(settings.FRONTEND_URL)

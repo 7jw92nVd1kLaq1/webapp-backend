@@ -28,6 +28,6 @@ class NotificationObject(BaseModel):
 
 
 class Notification(BaseModel):
-    actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notification_actor")
-    notifiers = models.ManyToManyField(User, related_name="notification_notifiers")
+    actor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notification_as_actor")
+    notifiers = models.ManyToManyField(User, related_name="notification_as_notifiers")
     notification_object = models.ForeignKey(NotificationObject, on_delete=models.RESTRICT)

@@ -1,6 +1,8 @@
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.utils.deprecation import MiddlewareMixin
-from django.middleware.csrf import _get_failure_view
+
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
 class PreventSuspendedUsersMiddleware(MiddlewareMixin):
@@ -8,16 +10,17 @@ class PreventSuspendedUsersMiddleware(MiddlewareMixin):
         return HttpResponse(reason)
 
     def process_request(self, request):
-        pass
+        auth = JWTAuthentication()
+        value = auth.authenticate(request)
 
-    def process_view(self, request, callback, callback_args, callback_kwargs):
-        if not request.user.is_authenticated:
+        if not value:
             return None
 
-        if request.user.role_set.filter(name="Suspended").exists():
-            return self._reject(request, "User is suspended")
+        if value[0].role_set.filter(name="Suspended").exists():
+            raise PermissionDenied("This user is suspended.")
 
-        return None
+    def process_view(self, request, callback, callback_args, callback_kwargs):
+        pass
 
     def process_response(self, request, response):
         return response

@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.forms.forms import ValidationError
 from allauth.account.forms import SignupForm
 from allauth.socialaccount.forms import SignupForm as SocialSignupForm
@@ -10,6 +11,7 @@ from django.utils.translation import gettext_lazy as _
 import re
 
 User = get_user_model()
+password_regex = settings.PASSWORD_REQUIREMENT_REGEX
 
 
 class UserAdminChangeForm(admin_forms.UserChangeForm):
@@ -48,10 +50,10 @@ class UserSocialSignupForm(SocialSignupForm):
 
 class RegisterForm(forms.Form):
     username = forms.CharField(max_length=100, strip=True)
-    password = forms.CharField(max_length=100)
-    password_confirmation = forms.CharField(max_length=100)
-    second_password = forms.CharField(max_length=100)
-    second_password_confirmation = forms.CharField(max_length=100)
+    password = forms.CharField(min_length=8)
+    password_confirmation = forms.CharField(min_length=8)
+    second_password = forms.CharField(min_length=8)
+    second_password_confirmation = forms.CharField(min_length=8)
     email = forms.EmailField()
     nickname = forms.CharField(max_length=255)
 
@@ -71,7 +73,7 @@ class RegisterForm(forms.Form):
     def clean_password(self):
         data = self.cleaned_data['password']
 
-        if not re.search("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$", data):
+        if not re.search(password_regex, data):
             raise ValidationError(
                 _("Your password must contain at least one uppercase, lowercase, special, and numeric characters."))
 
@@ -87,7 +89,7 @@ class RegisterForm(forms.Form):
     def clean_second_password(self):
         data = self.cleaned_data['second_password']
 
-        if not re.search("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$", data):
+        if not re.search(password_regex, data):
             raise ValidationError(
                 _("Your second password must contain at least one uppercase, lowercase, special, and numeric characters."))
 
@@ -149,7 +151,7 @@ class PasswordChangeForm(PasswordRequiredForm):
     def clean_new_password(self):
         data = self.cleaned_data['new_password']
 
-        if not re.search("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$", data):
+        if not re.search(password_regex, data):
             raise ValidationError(
                 _("Your new password must contain at least one uppercase, lowercase, special, and numeric characters."))
 
