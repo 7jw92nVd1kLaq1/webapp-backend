@@ -7,6 +7,6 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         try:
-            import veryusefulproject.core.apps
+            import veryusefulproject.core.signals
         except:
             pass

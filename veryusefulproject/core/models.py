@@ -6,15 +6,7 @@ class BaseModel(models.Model):
     modified_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        abstract: bool = True
-
-    @property
-    def created_at_formatted(self):
-        return self.created_at.strftime("%Y-%m-%d %H:%M:%S")
-
-    @property
-    def modified_at_formatted(self):
-        return self.modified_at.strftime("%Y-%m-%d %H:%M:%S")
+        abstract = True
 
     def save(
             self,

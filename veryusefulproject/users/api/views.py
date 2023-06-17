@@ -161,13 +161,18 @@ class RenewJWTSubscriptionTokenView(APIView):
             return response
 
         try:
-            refresh_token_object = RefreshToken(token=refresh_token_string)
+            RefreshToken(token=refresh_token_string)
         except:
             response.status_code = status.HTTP_400_BAD_REQUEST
             response.data = {'reason': 'Refresh token is invalid.'}
             return response
 
-        subscription = get_subscription_token_for_user(get_user_from_token(refresh_token_object))
+        if not request.query_params.get("channel", None):
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            response.data = {'reason': 'Provide the name of the channel you are trying to subscribe to.'}
+            return response
+
+        subscription = get_subscription_token_for_user(get_user_from_token(refresh_token_string), request.query_params.get("channel"))
         subscription.set_exp(lifetime=timedelta(minutes=10))
 
         data['token'] = str(subscription)

@@ -19,6 +19,7 @@ services:
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
+      - ./.envs/.local/.etc
     ports:
       - '8000:8000'
     command: /start
@@ -34,6 +35,18 @@ services:
       - veryusefulproject_local_postgres_data_backups:/backups
     env_file:
       - ./.envs/.local/.postgres
+
+  parser:
+    build:
+      context: .
+      dockerfile: ./webParser/Dockerfile
+    image: wow
+    container_name: veryusefulproject_web_parser
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./webParser/puppeteer-src:/parserFolder
+    command: /entrypoint.sh
 
   docs:
     image: veryusefulproject_local_docs
@@ -55,6 +68,22 @@ services:
     image: redis:6
     container_name: veryusefulproject_local_redis
 
+  centrifugo:
+    image: centrifugo/centrifugo
+    container_name: veryusefulproject_centrifugo
+    ulimits:
+      nofile:
+        soft: "65536"
+        hard: "65536"
+    depends_on:
+      - redis
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./config/centrifugo/:/centrifugo/
+    command: centrifugo --config=/centrifugo/config.toml
+    
+
   celeryworker:
     <<: *django
     image: veryusefulproject_local_celeryworker
@@ -62,6 +91,8 @@ services:
     depends_on:
       - redis
       - postgres
+      - parser
+      - centrifugo
     ports: []
     command: /start-celeryworker
 
@@ -72,6 +103,8 @@ services:
     depends_on:
       - redis
       - postgres
+      - parser
+      - centrifugo
     ports: []
     command: /start-celerybeat
 

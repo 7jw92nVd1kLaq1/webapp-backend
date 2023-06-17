@@ -1,10 +1,12 @@
 from uuid import uuid4
+
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_slug
 from django.db import models
 from django.utils.html import escape
 
 from veryusefulproject.core.models import BaseModel
+from veryusefulproject.currencies.models import FiatCurrency
 from veryusefulproject.payments.models import OrderPayment
 from veryusefulproject.shipping.models import ShippingCompany
 
@@ -40,19 +42,20 @@ class OrderAddress(BaseModel):
 
 
 class OrderStatus(BaseModel):
-    name = models.CharField(max_length=128, unique=True, validators=[validate_slug])
+    name = models.CharField(max_length=256, unique=True, validators=[validate_slug])
+    step = models.SmallIntegerField(unique=True)
     desc = models.TextField()
 
 
 class OrderTrackingNumber(BaseModel):
     tracking_number = models.CharField(max_length=128, validators=[validate_slug])
-    shipping_company = models.ForeignKey(ShippingCompany, on_delete=models.RESTRICT, null=True)
+    shipping_company = models.ForeignKey(ShippingCompany, on_delete=models.RESTRICT)
+    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2)
 
 
 class Order(BaseModel):
     url_id = models.UUIDField(default=uuid4)
     status = models.ForeignKey(OrderStatus, on_delete=models.RESTRICT)
-    company = models.ForeignKey(Business, on_delete=models.RESTRICT)
     payment = models.OneToOneField(OrderPayment, on_delete=models.RESTRICT)
     address = models.ForeignKey(OrderAddress, on_delete=models.RESTRICT)
     customer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="orders_as_customer")
@@ -70,8 +73,8 @@ class OrderDispute(BaseModel):
 
 
 class OrderDisputeMessage(BaseModel):
-    order_dispute = models.ForeignKey(OrderDispute, on_delete=models.RESTRICT, related_name="messages")
-    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    order_dispute = models.ForeignKey(OrderDispute, on_delete=models.RESTRICT, related_name="dispute_messages")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     message = models.TextField()
 
 
@@ -81,19 +84,31 @@ class OrderMessage(BaseModel):
     message = models.TextField()
 
 
+class OrderItemSeller(BaseModel):
+    name = models.TextField()
+    desc = models.TextField(default="")
+
+
 class OrderItem(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_items")
+    company = models.ForeignKey(Business, on_delete=models.RESTRICT)
+    seller = models.ForeignKey(OrderItemSeller, on_delete=models.RESTRICT)
     image_url = models.URLField()
     name = models.TextField()
     quantity = models.PositiveIntegerField()
+    currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
     price = models.PositiveIntegerField()
     url = models.URLField()
     options = models.JSONField()
 
 
-class OrderIntermediaryBlacklist(BaseModel):
-    order = models.OneToOneField(Order, on_delete=models.CASCADE)
-    users = models.ManyToManyField(User)
+class OrderIntermediaryCandidate(BaseModel):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rate = models.DecimalField(max_digits=3, decimal_places=3)
+
+    class Meta:
+        unique_together = ["order", "user"]
 
 
 class OrderReview(BaseModel):

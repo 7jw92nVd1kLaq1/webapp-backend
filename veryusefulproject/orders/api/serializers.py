@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from veryusefulproject.core.mixins import DynamicFieldsSerializerMixin
-from veryusefulproject.orders.models import Business, BusinessIndustry, BusinessLogo, Order, OrderAddress, OrderDispute, OrderDisputeMessage, OrderIntermediaryBlacklist, OrderItem, OrderMessage, OrderReview, OrderStatus, OrderTrackingNumber
+from veryusefulproject.orders.models import Business, BusinessIndustry, BusinessLogo, Order, OrderAddress, OrderDispute, OrderDisputeMessage, OrderIntermediaryCandidate, OrderItem, OrderMessage, OrderReview, OrderStatus, OrderTrackingNumber
 from veryusefulproject.payments.api.serializers import OrderPaymentSerializer
 
 
@@ -49,9 +49,9 @@ class OrderDisputeSerializer(DynamicFieldsSerializerMixin, serializers.ModelSeri
         fields = '__all__'
 
 
-class OrderIntermediaryBlacklistSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
+class OrderIntermediaryCandidateSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
     class Meta:
-        model = OrderIntermediaryBlacklist
+        model = OrderIntermediaryCandidate
         fields = '__all__'
 
 

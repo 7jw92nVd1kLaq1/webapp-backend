@@ -83,7 +83,7 @@ def set_tokens_in_cookie(data, response):
     return response
 
 
-def get_tokens_for_user(user, subscription=False):
+def get_tokens_for_user(user):
     refresh = RefreshToken.for_user(user)
     access = refresh.access_token
     tokens = {
@@ -91,20 +91,13 @@ def get_tokens_for_user(user, subscription=False):
         'access': str(access),
     }
 
-    if not subscription:
-        return tokens
-
-    subscription = get_subscription_token_for_user(user)
-    subscription["exp"] = access.get("exp")
-    tokens['subscription'] = str(subscription)
-
     return tokens
 
 
-def get_subscription_token_for_user(user):
+def get_subscription_token_for_user(user, channel):
     token = UntypedToken.for_user(user)
     token.token_type = "subscription"
-    token["channel"] = "marketplace"
+    token["channel"] = channel 
 
     return token
 
@@ -118,5 +111,7 @@ def get_user_from_token(token, refresh_token=True):
     username = token_obj.payload.get('sub', None)
     if not username:
         raise ValidationError("Username is missing from the decoded token.")
+
+    print("This user is {}".format(username))
 
     return get_user_model().objects.get(username=username)
