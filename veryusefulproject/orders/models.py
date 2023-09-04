@@ -1,4 +1,5 @@
 from uuid import uuid4
+import decimal
 
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_slug
@@ -50,21 +51,21 @@ class OrderStatus(BaseModel):
 class OrderTrackingNumber(BaseModel):
     tracking_number = models.CharField(max_length=128, validators=[validate_slug])
     shipping_company = models.ForeignKey(ShippingCompany, on_delete=models.RESTRICT)
-    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2)
+    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=decimal.Decimal(0))
 
 
 class Order(BaseModel):
     url_id = models.UUIDField(default=uuid4)
     status = models.ForeignKey(OrderStatus, on_delete=models.RESTRICT)
-    payment = models.OneToOneField(OrderPayment, on_delete=models.RESTRICT)
-    address = models.ForeignKey(OrderAddress, on_delete=models.RESTRICT)
-    customer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="orders_as_customer")
-    intermediary = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="orders_as_intermediary")
-    tracking = models.OneToOneField(OrderTrackingNumber, on_delete=models.SET_NULL, null=True)
     additional_request = models.TextField(default="")
 
     def set_additional_request(self, value):
         self.additional_request = escape(value)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['url_id'])
+        ]
 
 
 class OrderDispute(BaseModel):
@@ -97,9 +98,11 @@ class OrderItem(BaseModel):
     name = models.TextField()
     quantity = models.PositiveIntegerField()
     currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
-    price = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=11, decimal_places=2)
     url = models.URLField()
     options = models.JSONField()
+    order_identifier = models.TextField()
+    tracking = models.ForeignKey(OrderTrackingNumber, on_delete=models.SET_NULL, null=True)
 
 
 class OrderIntermediaryCandidate(BaseModel):
@@ -117,7 +120,7 @@ class OrderReview(BaseModel):
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="order_review_author")
     title = models.TextField()
     content = models.TextField()
-    rating = models.FloatField()
+    rating = models.DecimalField(max_digits=3, decimal_places=2)
     upvote = models.PositiveIntegerField()
     downvote = models.PositiveIntegerField()
 
@@ -126,3 +129,23 @@ class OrderReview(BaseModel):
 
     def set_content(self, content) -> None:
         self.content = escape(content)
+
+
+class OrderAddressLink(BaseModel):
+    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
+    address = models.ForeignKey(OrderAddress, on_delete=models.RESTRICT)
+
+
+class OrderPaymentLink(BaseModel):
+    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
+    payment = models.OneToOneField(OrderPayment, on_delete=models.RESTRICT)
+
+
+class OrderCustomerLink(BaseModel):
+    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
+    customer = models.ForeignKey(User, on_delete=models.RESTRICT)
+
+
+class OrderIntermediaryLink(BaseModel):
+    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
+    intermediary = models.ForeignKey(User, on_delete=models.RESTRICT)

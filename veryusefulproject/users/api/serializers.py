@@ -3,8 +3,6 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from veryusefulproject.core.mixins import DynamicFieldsSerializerMixin
-from veryusefulproject.core.api.serializers import CustomerSerializerMetaClass
-from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.forms import RegisterForm
 
 from ..models import Role
@@ -20,26 +18,11 @@ class RoleSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
 
 class UserSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
     role_set = RoleSerializer(many=True, read_only=True)
-    orders_as_customer = OrderSerializer(many=True)
-    orders_as_intermediary = OrderSerializer(many=True)
 
     class Meta:
         model = User
-        fields = [
-            'username',
-            'nickname',
-            'email',
-            'password',
-            'second_password',
-            'orders_as_customer',
-            'orders_as_intermediary',
-            'is_staff',
-            'role_set',
-            'date_joined'
-        ]
+        fields = "__all__"
         read_only_fields = [
-            'orders_as_customer',
-            'orders_as_intermediary',
             "is_staff",
             "date_joined",
             'role_set',
@@ -65,8 +48,8 @@ class UserSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
                 instance.set_password(validated_data[field])
             elif field == "second_password":
                 instance.set_second_password(validated_data[field])
-
-            setattr(instance, field, validated_data[field])
+            else:
+                setattr(instance, field, validated_data[field])
 
         instance.save()
         return instance

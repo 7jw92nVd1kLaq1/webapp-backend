@@ -1,5 +1,12 @@
 const Xvfb = require("xvfb");
 const fetchAmazonData = require("./util/amazon");
+const {
+  fetchCurrencyConversionData,
+  fetchCryptoCurrencyPrice,
+} = require("./util/currency");
+
+const http = require("http");
+
 const puppeteer = require("puppeteer-extra");
 const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 puppeteer.use(StealthPlugin());
@@ -10,7 +17,6 @@ const express = require("express");
 const app = express();
 app.use(express.json());
 const port = 3000;
-
 
 (async () => {
   const xvfb = new Xvfb({
@@ -23,10 +29,18 @@ const port = 3000;
   const browser = await puppeteer.launch({
     headless: false,
     defaultViewport: null, //otherwise it defaults to 800x600
-    args: ["--no-sandbox", "--start-fullscreen", '--disable-setuid-sandbox','--font-render-hinting=none', "--display=" + xvfb._display],
+    args: [
+      "--no-sandbox",
+      "--start-fullscreen",
+      "--disable-setuid-sandbox",
+      "--font-render-hinting=none",
+      "--display=" + xvfb._display,
+    ],
     executablePath: process.env.PUPPETEER_EXEC_PATH,
-    env: {DISPLAY: ":0.0"}
+    env: { DISPLAY: ":0.0" },
   });
+
+  // Express.js paths
   app.post("/", async (req, res) => {
     console.log("Request received!!!! Someone made a request");
     const data = await fetchAmazonData(browser, req.body.url);
@@ -34,9 +48,31 @@ const port = 3000;
     res.json(data);
   });
 
+  app.get("/getCurrencyData/", async (req, res) => {
+    const data = await fetchCurrencyConversionData(browser);
+    res.json(data);
+  });
+
+  app.get("/getCurrencySymbols/", async (req, res) => {
+    const data = await fetchFiatCurrencyData.fetchCurrencySymbols(browser);
+    res.json(data);
+  });
+
+  app.post("/captchaImageSolve/", async (req, res) => {
+    const url = req.body.url;
+  });
+
+  app.post("/getCryptoCurrencyData/", async (req, res) => {
+    const name = req.body.name;
+    const ticker = req.body.ticker;
+
+    const data = await fetchCryptoCurrencyPrice(browser, name, ticker);
+    res.json(data);
+  });
+
   app.listen(port, () => {
     console.log(
-      `Server starting.... You can access the server at port ${port}.`
+      `Server running.... You can access the server at port ${port}.`
     );
   });
 })();

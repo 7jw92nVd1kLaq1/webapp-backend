@@ -19,11 +19,12 @@ class FiatCurrency(BaseModel):
         max_length=5, validators=[alphabetValidator], primary_key=True)
     desc: models.TextField = models.TextField()
     name: models.CharField = models.CharField(max_length=128, validators=[alphabetValidator])
+    symbol = models.BinaryField()
 
 
 class FiatCurrencyRate(BaseModel):
     fiat_currency = models.ForeignKey(FiatCurrency, on_delete=models.CASCADE)
-    rate = models.FloatField()
+    rate = models.DecimalField(max_digits=19, decimal_places=10)
 
 
 class CryptoCurrency(BaseModel):
@@ -36,4 +37,4 @@ class CryptoCurrency(BaseModel):
 class CryptoCurrencyRate(BaseModel):
     cryptocurrency = models.ForeignKey(CryptoCurrency, on_delete=models.CASCADE)
     fiat_currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
-    rate = models.FloatField()
+    rate = models.DecimalField(max_digits=19, decimal_places=10)

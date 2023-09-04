@@ -2,14 +2,20 @@ from allauth.socialaccount import app_settings
 from allauth.socialaccount.adapter import get_adapter
 from allauth.socialaccount.providers.github.provider import GitHubProvider
 from allauth.socialaccount.providers.github.views import GitHubOAuth2Adapter
+from allauth.socialaccount.models import SocialAccount
 
 import requests
 
 class CustomGitHubProvider(GitHubProvider):
     def sociallogin_from_response(self, request, response):
-        from allauth.socialaccount.models import SocialAccount
         from .allauth_views import ModifiedSocialLogin as SocialLogin
-
+        
+        ## Issues to fix: there may exist two different accounts with the same username of the different providers.
+        ## To fix this, do the following:
+        ## 1. Check the UID of the account - the same UID may be allowed as long as they are of different providers.
+        ## 1.1 If the UID already exists, assign JWT tokens to a user and redirect him to the home page of the front-end website
+        ## 2. Check the username of the account and search DB to check the existence of a user with the same username.
+        ## 3. If exists, generate the arbitrary username of an account and save to DB.
         adapter = get_adapter(request)
         uid = self.extract_uid(response)
         extra_data = self.extract_extra_data(response)

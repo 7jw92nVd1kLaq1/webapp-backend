@@ -29,6 +29,7 @@ def _complete_social_login(request, sociallogin):
 
     assert User.objects.filter(username=sociallogin.user.username).exists()
 
+    # this is the part I had to implement for django-rest-framework
     tokens = get_tokens_for_user(sociallogin.user)
     response = HttpResponseRedirect(settings.FRONTEND_URL)
     response = set_tokens_in_cookie(tokens, response)

@@ -4,7 +4,9 @@ from rest_framework.routers import DefaultRouter, SimpleRouter
 
 from veryusefulproject.core.api.views import CsrfView
 from veryusefulproject.management.api.views import AdminUsersViewSet
-from veryusefulproject.orders.api.views import RequestItemInfoView
+from veryusefulproject.orders.views import UserOrderListView
+from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView
+from veryusefulproject.request_marketplace.api.views import DisplayAvailableOffersView
 from veryusefulproject.users.api.views import CheckJWTAccessTokenValidityView, UserRegistrationView, UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
 
 if settings.DEBUG:
@@ -36,4 +38,12 @@ urlpatterns += (
 
 urlpatterns += (
     path("parseItemURL/", RequestItemInfoView.as_view(), name="parse-item-url"),
+    path("create-order/", OrderCreationView.as_view(), name="create-order"),
+    path("list-order/", ListUserOrderView.as_view(), name="list-order"),
+    path("test-order/", UserOrderListView.as_view(), name="test-order"),
+    path("order-detail/<uuid:pk>/", OrderRetrieveView.as_view(), name="order-detail")
+)
+
+urlpatterns += (
+    path("list-requests/", DisplayAvailableOffersView.as_view(), name="list-requests"),
 )

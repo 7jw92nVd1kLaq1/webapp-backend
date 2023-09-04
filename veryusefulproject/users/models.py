@@ -52,6 +52,7 @@ class User(AbstractUser):
         max_length=255,
         unique=True)
     second_password = models.CharField(_("Second password"), max_length=128)
+    REQUIRED_FIELDS = ['second_password']
 
     class Meta:
         indexes = [
@@ -82,6 +83,9 @@ class User(AbstractUser):
 
     def get_nickname(self) -> models.CharField:
         return self.nickname
+
+    def set_unusable_second_password(self):
+        self.second_password = make_password(None)
 
     def set_second_password(self, raw_password) -> bool:
         self.second_password = make_password(raw_password)

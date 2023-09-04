@@ -1,18 +1,18 @@
+from rest_framework.exceptions import NotFound
+
 class DynamicFieldsSerializerMixin(object):
     def __init__(self, *args, **kwargs):
         # Don't pass the 'fields' arg up to the superclass
         fields = kwargs.pop('fields', None)
         fields_exclude = kwargs.pop("fields_exclude", None)
-        depth = kwargs.pop("depth", 0)
 
-        excluded = None
         allowed = None
+        excluded = None
 
         # Instantiate the superclass normally
         super(DynamicFieldsSerializerMixin, self).__init__(*args, **kwargs)
 
         existing = set(self.fields.keys())
-        self.Meta.depth = depth
 
         if fields_exclude is not None:
             excluded = set(fields_exclude)
@@ -26,3 +26,24 @@ class DynamicFieldsSerializerMixin(object):
             # Drop any fields that are not specified in the `fields` argument.
             for field_name in existing - allowed:
                 self.fields.pop(field_name)
+
+
+class PaginationHandlerMixin(object):
+    @property
+    def paginator(self):
+        if not hasattr(self, '_paginator'):
+            if self.pagination_class is None:
+                self._paginator = None
+            else:
+                self._paginator = self.pagination_class()
+
+        return self._paginator
+
+    def paginate_queryset(self, queryset):
+        if self.paginator is None:
+            return None
+        return self.paginator.paginate_queryset(queryset, self.request, view=self)
+
+    def get_paginated_response(self, data):
+        assert self.paginator is not None
+        return self.paginator.get_paginated_response(data)

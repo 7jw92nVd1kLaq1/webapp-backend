@@ -3,6 +3,7 @@ Base settings to build other settings files upon.
 """
 from datetime import timedelta
 from pathlib import Path
+from celery.schedules import crontab
 
 import environ
 
@@ -311,6 +312,17 @@ CELERY_TASK_TIME_LIMIT = 5 * 60
 CELERY_TASK_SOFT_TIME_LIMIT = 60
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#beat-scheduler
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+# Celery Beat Tasks
+CELERY_BEAT_SCHEDULE = {
+    'getConversionRateFiat': {
+        'task': 'veryusefulproject.currencies.tasks.update_currency_info',
+        'schedule': crontab(hour="*", minute=0),
+    },
+    'getCryptoCurrencyPriceAgainstDollar': {
+        'task': 'veryusefulproject.currencies.tasks.update_crypto_currency_info',
+        'schedule': crontab(hour="*", minute=0),
+    },
+}
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#worker-send-task-events
 CELERY_WORKER_SEND_TASK_EVENTS = True
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#std-setting-task_send_sent_event
@@ -332,7 +344,7 @@ ACCOUNT_FORMS = {"signup": "veryusefulproject.users.forms.UserSignupForm"}
 SOCIALACCOUNT_ADAPTER = "veryusefulproject.users.adapters.SocialAccountAdapter"
 # https://django-allauth.readthedocs.io/en/latest/forms.html
 SOCIALACCOUNT_FORMS = {"signup": "veryusefulproject.users.forms.UserSocialSignupForm"}
-SITE_ID = 0
+SITE_ID = 1
 
 
 # django-rest-framework
