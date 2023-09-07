@@ -335,6 +335,4 @@ veryusefulproject/media/
 .ipython/
 .env
 .envs/*
-!.envs/.local/.etc-example
-!.envs/.local/.django-example
-!.envs/.local/.postgres-example
+!.envs/.local/.examples/
