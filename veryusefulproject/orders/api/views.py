@@ -173,34 +173,86 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
     def get_user_customer_orders(self):
         user = self.request.user
 
-        orders = Order.objects.select_related("status", "ordercustomerlink__customer").prefetch_related(
-            "order_items").filter(ordercustomerlink__customer__username=user.get_username()).only("status__step", "ordercustomerlink__customer__username", "url_id", "created_at")
+        orders = Order.objects.select_related(
+            "status", 
+            "ordercustomerlink__customer"
+        ).prefetch_related(
+            "order_items"
+        ).filter(
+            ordercustomerlink__customer__username=user.get_username()
+        ).only(
+            "status__step", 
+            "ordercustomerlink__customer__username", 
+            "url_id", 
+            "created_at"
+        )
 
         page = self.paginate_queryset(orders)
         if page is not None:
-            serializer = self.get_paginated_response(self.serializer_class(page, many=True, fields=["status", "customer", "order_items", "url_id", "created_at"], context={
-                "customer": {"fields": [
-                    "username"]}, "order_items": {"fields": ["name"]}}).data)
+            serializer = self.get_paginated_response(
+                self.serializer_class(
+                    page, 
+                    many=True, 
+                    fields=["status", "customer", "order_items", "url_id", "created_at"], 
+                    context={
+                        "customer": {"fields": ["username"]}, 
+                        "order_items": {"fields": ["name"]}
+                    }
+                ).data
+            )
         else:
-            serializer = self.serializer_class(orders, many=True, fields=["status", "customer", "order_items", "url_id", "created_at"], context={
-                "customer": {"fields": [
-                    "username"]}, "order_items": {"fields": ["name"]}})
+            serializer = self.serializer_class(
+                orders, 
+                many=True, 
+                fields=["status", "customer", "order_items", "url_id", "created_at"], 
+                context={
+                    "customer": {"fields": ["username"]}, 
+                    "order_items": {"fields": ["name"]}
+                }
+            )
 
         return serializer.data
 
     def get_user_intermediary_orders(self):
         user = self.request.user
 
-        orders = Order.objects.select_related("status", "orderintermediarylink__intermediary").prefetch_related(
-            "order_items").filter(orderintermediarylink__intermediary__username=user.get_username()).only("status__step", "orderintermediarylink__intermediary__username", "url_id", "created_at")
+        orders = Order.objects.select_related(
+            "status", 
+            "orderintermediarylink__intermediary"
+        ).prefetch_related(
+            "order_items"
+        ).filter(
+            orderintermediarylink__intermediary__username=user.get_username()
+        ).only(
+            "status__step", 
+            "orderintermediarylink__intermediary__username", 
+            "url_id", 
+            "created_at"
+        )
 
         page = self.paginate_queryset(orders)
         if page is not None:
-            serializer = self.get_paginated_response(self.serializer_class(page, many=True, fields=["status", "intermediary", "order_items", "url_id", "created_at"], context={
-                "intermediary": {"fields": ["username"]}, "order_items": {"fields": ['name']}}).data)
+            serializer = self.get_paginated_response(
+                self.serializer_class(
+                    page, 
+                    many=True, 
+                    fields=["status", "intermediary", "order_items", "url_id", "created_at"], 
+                    context={
+                        "intermediary": {"fields": ["username"]}, 
+                        "order_items": {"fields": ['name']}
+                    }
+                ).data
+            )
         else:
-            serializer = self.serializer_class(orders, many=True, fields=["status", "intermediary", "order_items", "url_id", "created_at"], context={
-                "intermediary": {"fields": ["username"]}, "order_items": {"fields": ['name']}})
+            serializer = self.serializer_class(
+                orders, 
+                many=True, 
+                fields=["status", "intermediary", "order_items", "url_id", "created_at"], 
+                context={
+                    "intermediary": {"fields": ["username"]}, 
+                    "order_items": {"fields": ['name']}
+                }
+            )
 
         return serializer.data
 
@@ -218,6 +270,9 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
         elif target == 'intermediary':
             data = self.get_user_intermediary_orders()
         else:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "You have supplied the unknown argument for the parameter \"for\"."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "You have supplied the unknown argument for the parameter \"for\"."}
+            )
 
         return Response(status=status.HTTP_200_OK, data=data)

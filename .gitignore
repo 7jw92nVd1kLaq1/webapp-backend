@@ -335,5 +335,6 @@ veryusefulproject/media/
 .ipython/
 .env
 .envs/*
+!.envs/.local/
 !.envs/.local/.examples/
 !.envs/.local/.examples/*
