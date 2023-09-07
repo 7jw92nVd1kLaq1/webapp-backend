@@ -78,7 +78,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                         "user": {"fields": ["username", "date_joined"]},
                         "address": {"fields": ["country"]},
                         "payment": {"fields": ["additional_cost", "fiat_currency", "order_payment_balance"]},
-                        "order_items": {"fields": ["name", "price", "image_url"]},
+                        "order_items": {"fields": ["name", "price", "image_url", "options", "quantity", "url"]},
                         "order_payment_balance": {"fields": ["payment_method"]},
                     }
                 ).data
@@ -92,7 +92,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                     "user": {"fields": ["username", "date_joined"]},
                     "address": {"fields": ["country"]},
                     "payment": {"fields": ["additional_cost", "fiat_currency", "order_payment_balance"]},
-                    "order_items": {"fields": ["name", "price", "image_url"]},
+                    "order_items": {"fields": ["name", "price", "image_url", "options", "quantity", "url"]},
                     "order_payment_balance": {"fields": ["payment_method"]},
                 }
             )
@@ -101,18 +101,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
         results = list(data['results'])
 
 
-        ## Add to each entry the rate of its payment method at the time of the creation of each order.
-        for x in range(len(results)):
-            if not results[x].get("payment", None):
-                continue
-
-            cryptocurrency = CryptoCurrency.objects.get(ticker=results[x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["ticker"])
-            cryptocurrency_rate = cryptocurrency.cryptocurrencyrate_set.filter(Q(created_at__lte=results[x]["created_at"])).order_by("created_at").only("rate").last()
-            
-            data["results"][x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["rate"] = float(cryptocurrency_rate.rate)
-        
-
-        ## Add average rating of a customer so far since its registration to json 
+        ## Complie a list of average rating of every customer so far since its registration in a page
         user_ratings = {}
         users = set([order["customer"]["customer"]["username"] for order in results if order.get("customer")])
         for user in users:
@@ -120,9 +109,16 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
             user_ratings[user] = user_avg_rating
 
         for x in range(len(results)):
-            if not data['results'][x]['customer']:
-                continue
-            username = data['results'][x]['customer']['customer']['username'] 
-            data['results'][x]['customer']['customer']['average_rating'] = user_ratings[username] 
+            # Assign the rate of Cryptocurrency at the time of the creation of an order
+            if results[x].get("payment", None):
+                cryptocurrency = CryptoCurrency.objects.get(ticker=results[x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["ticker"])
+                cryptocurrency_rate = cryptocurrency.cryptocurrencyrate_set.filter(Q(created_at__lte=results[x]["created_at"])).order_by("created_at").only("rate").last()
+                
+                data["results"][x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["rate"] = float(cryptocurrency_rate.rate)
+            
+            # Assign the average rating to every order of a customer
+            if data['results'][x]['customer']:
+                username = data['results'][x]['customer']['customer']['username'] 
+                data['results'][x]['customer']['customer']['average_rating'] = user_ratings[username] 
 
         return Response(status=status.HTTP_200_OK, data=data)

@@ -15,16 +15,16 @@ from veryusefulproject.shipping.models import ShippingCompany
 User = get_user_model()
 
 
-class BusinessIndustry(BaseModel):
-    name = models.CharField(max_length=128)
-    desc = models.TextField()
-
-
 class Business(BaseModel):
     ticker = models.CharField(max_length=16, primary_key=True)
-    industry = models.ForeignKey(BusinessIndustry, related_name="businesses", on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=64)
     desc = models.TextField()
+    url = models.JSONField(default=list())
+
+
+class BusinessUrl(BaseModel):
+    business = models.ForeignKey(Business, related_name="urls", on_delete=models.CASCADE)
+    url = models.URLField()
 
 
 class BusinessLogo(BaseModel):
