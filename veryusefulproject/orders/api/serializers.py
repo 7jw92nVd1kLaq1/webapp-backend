@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from veryusefulproject.core.mixins import DynamicFieldsSerializerMixin
-from veryusefulproject.orders.models import Business, BusinessIndustry, BusinessLogo, Order, OrderAddress, OrderAddressLink, OrderCustomerLink, OrderDispute, OrderDisputeMessage, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderItem, OrderMessage, OrderPaymentLink, OrderReview, OrderStatus, OrderTrackingNumber
+from veryusefulproject.orders.models import Business, BusinessLogo, Order, OrderAddress, OrderAddressLink, OrderCustomerLink, OrderDispute, OrderDisputeMessage, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderItem, OrderMessage, OrderPaymentLink, OrderReview, OrderStatus, OrderTrackingNumber
 from veryusefulproject.payments.api.serializers import OrderPaymentSerializer
 from veryusefulproject.users.api.serializers import UserSerializer
 
@@ -14,19 +14,10 @@ class BusinessLogoSerializer(DynamicFieldsSerializerMixin, serializers.ModelSeri
 
 
 class BusinessSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
-    industry = serializers.SlugRelatedField(read_only=True, slug_field="name")
-
     class Meta:
         model = Business
-        fields = ["ticker", "name", "industry"]
+        fields = ["ticker", "name"]
 
-
-class BusinessIndustrySerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
-    businesses = BusinessSerializer(many=True)
-
-    class Meta:
-        model = BusinessIndustry
-        fields = ["id", "name", "businesses"]
 
 
 class OrderAddressSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):

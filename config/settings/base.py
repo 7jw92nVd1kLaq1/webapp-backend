@@ -387,7 +387,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': False,
 
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': 'x580_d@ry*qio5lup3b34(daz1a!n^%fhf$)vv*a(k&a3p@989',
+    'SIGNING_KEY': env('CENTRIFUGO_SIGNING_KEY'),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,

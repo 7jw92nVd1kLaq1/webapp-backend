@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=yes
 IPYTHONDIR=/app/.ipython
+DJANGO_SECRET_KEY=pv!4(f%)l$b(c2_e^=r**vlqphddl5m1(3u+nm6zpa0kk1=*q#
 # Redis
 # ------------------------------------------------------------------------------
 REDIS_URL=redis://redis:6379/0

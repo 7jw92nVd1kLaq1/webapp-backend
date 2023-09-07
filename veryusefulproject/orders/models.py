@@ -19,7 +19,6 @@ class Business(BaseModel):
     ticker = models.CharField(max_length=16, primary_key=True)
     name = models.CharField(max_length=64)
     desc = models.TextField()
-    url = models.JSONField(default=list())
 
 
 class BusinessUrl(BaseModel):
