@@ -335,6 +335,9 @@ veryusefulproject/media/
 .ipython/
 .env
 .envs/*
+.envs/.local/.django
+.envs/.local/.etc
+.envs/.local/.postgres
 !.envs/.local/
 !.envs/.local/.examples/
 !.envs/.local/.examples/*
