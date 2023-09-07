@@ -1,0 +1,6 @@
+v3_use_offset = true
+allow_subscribe_for_client = true
+token_hmac_secret_key = "SET_THIS"
+api_key = "SET_THIS"
+log_level = "debug"
+allowed_origins = ["https://localhost:5173"] 
