@@ -11,6 +11,8 @@ from veryusefulproject.users.api.authentication import JWTAuthentication
 
 from .paginations import RequestsListPagination
 
+import environ
+
 
 class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
     authentication_classes = [JWTAuthentication]
@@ -120,5 +122,5 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
             if data['results'][x]['customer']:
                 username = data['results'][x]['customer']['customer']['username'] 
                 data['results'][x]['customer']['customer']['average_rating'] = user_ratings[username] 
-
+       
         return Response(status=status.HTTP_200_OK, data=data)

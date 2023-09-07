@@ -387,7 +387,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': False,
 
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': env('CENTRIFUGO_SIGNING_KEY'),
+    'SIGNING_KEY': env.str("CENTRIFUGO_SIGNING_KEY"),
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
