@@ -34,9 +34,10 @@ def get_product_info(url, username):
     json_data['price'] = str(price)
 
     json_data['url'] = re.search(r"(?<=dp\/)[\w]+", url).group()
+    print(json_data['options'])
 
-    for option in range(len(json_data['options'])):
-        if len(json_data['options'][option]) < 2:
+    for option in list(json_data['options'].keys()):
+        if len(json_data['options'][option]) < 1:
             json_data['options'].pop(option)
 
     price_in_dollar = convert_price_to_dollar(currency_symbol, price)

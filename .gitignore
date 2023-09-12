@@ -341,3 +341,5 @@ veryusefulproject/media/
 !.envs/.local/
 !.envs/.local/.examples/
 !.envs/.local/.examples/*
+
+webParser/puppeteer-src/tmp/*

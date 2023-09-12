@@ -38,6 +38,7 @@ const port = 3000;
     ],
     executablePath: process.env.PUPPETEER_EXEC_PATH,
     env: { DISPLAY: ":0.0" },
+    userDataDir: "/parserFolder/tmp",
   });
 
   // Express.js paths
@@ -72,7 +73,7 @@ const port = 3000;
 
   app.listen(port, () => {
     console.log(
-      `Server running.... You can access the server at port ${port}.`
+      `Server running.... You can access the server at port ${port}. Hii`
     );
   });
 })();

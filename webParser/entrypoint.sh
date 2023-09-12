@@ -8,7 +8,7 @@
 export PUPPETEER_EXEC_PATH="google-chrome-stable"
 
 # Run commands
-cmd="node /parserFolder/app.js"
+cmd="npx nodemon --watch /parserFolder/util /parserFolder/app.js"
 echo "Running '$cmd'!"
 if eval $cmd; then
     # no op

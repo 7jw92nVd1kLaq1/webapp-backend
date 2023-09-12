@@ -1,0 +1,310 @@
+const axios = require("axios");
+const fs = require("fs");
+
+const saveText = (fileName, content) => {
+  fs.writeFile(`/parserFolder/${fileName}`, `${content}`, function (err) {
+    if (err) {
+      return console.log(err);
+    }
+    console.log("The file was saved!");
+  });
+};
+
+async function fetchAmazonData(browser, url) {
+  const data = {};
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 720 });
+  await page.goto(url, { waitUntil: "load" });
+
+  try {
+    const captcha = await solveCaptcha(page);
+    if (captcha === false) return data;
+    else if (captcha === null) console.log("This page is captcha-freee.");
+  } catch (err) {
+    console.log(err);
+  }
+
+  console.log(`Page Accessed: ${url}`);
+  try {
+    const productName = await page.$eval(
+      "span#productTitle",
+      (title) => title.textContent
+    );
+    data.productName = productName.trim();
+  } catch (err) {
+    data.productName = "undefined";
+  }
+
+  try {
+    const price = await page.$eval(
+      ".a-price .a-offscreen",
+      (price) => price.textContent
+    );
+    data.price = price.trim();
+  } catch (err) {
+    data.price = "undefined";
+  }
+
+  try {
+    const imageurl = await page.$eval("img#landingImage", (image) => image.src);
+    data.imageurl = imageurl;
+  } catch (err) {
+    try {
+      const imageurl = await page.$eval(
+        "div#unrolledImgNo0 > div > img",
+        (image) => image.src
+      );
+      data.imageurl = imageurl;
+    } catch (err) {
+      data.imageurl = "undefined";
+    }
+  }
+
+  try {
+    const rating = await page.$eval(
+      "#averageCustomerReviews a span",
+      (review) => review.textContent
+    );
+    data.rating = rating.trim();
+  } catch (err) {
+    data.rating = "undefined";
+  }
+
+  try {
+    const brand = await page.$eval(
+      "a#bylineInfo",
+      (brand) => brand.textContent
+    );
+    data.brand = brand.trim();
+  } catch (err) {
+    data.brand = "undefined";
+  }
+
+  domainRegex = new RegExp(
+    "^(https://)?(www.)?amazon.(com.tr)?(com.au)?(com.br)?(com)?(co.uk)?(co.jp)?(ae)?(de)?(fr)?(es)?(in)?(nl)?(pl)?(se)?(sg)?(eg)?/"
+  );
+  webSiteDomain = await page.url();
+  data.domain = webSiteDomain.match(domainRegex)[0];
+  data.options = await fetchAmazonDataOptions(page);
+
+  await page.close();
+  return data;
+}
+
+const parseDropDownOptions = async (elemHandle, url) => {};
+
+const parseClickOptions = async (elemHandle) => {};
+
+const fetchAmazonDataOptionsNew = async (page) => {
+  const expandButtons = await page.$$('span[id^="a-autoid"]');
+  for (const button of expandButtons) {
+    try {
+      await button.click();
+    } catch (e) {}
+  }
+  const options = await page.$$eval(
+    "#twister-plus-inline-twister > div",
+    (elems) => {
+      const options = {};
+      for (const elem of elems) {
+        const elementWithKey = elem.querySelector(
+          "span > span.a-color-secondary"
+        );
+        const key = elementWithKey.textContent.trim().slice(0, -1);
+        options[key] = [];
+
+        const optionList = elem.querySelectorAll(
+          "ul.a-button-list > li[data-asin]"
+        );
+        for (const option of optionList) {
+          const parsedOption = {};
+          const url = option.getAttribute("data-asin");
+          if (url) parsedOption.url = url;
+          try {
+            const image = option.querySelector("img[src]");
+            if (image) {
+              parsedOption.image_url = image.getAttribute("src");
+              parsedOption.name = image.getAttribute("alt");
+            } else parsedOption.name = option.textContent.trim();
+          } catch (e) {
+            parsedOption.name = option.textContent.trim();
+          }
+          try {
+            const isSelectedOption = option.querySelector(
+              'span[aria-checked="true"].a-button-toggle'
+            );
+            if (isSelectedOption) {
+              parsedOption.selectedOption = true;
+            }
+          } catch (e) {}
+          options[key].push(parsedOption);
+        }
+      }
+      return options;
+    }
+  );
+  return options;
+};
+
+const parseAmazonDataOptionsOldClickOptions = (optionList) => {
+  const result = [];
+  for (const option of optionList) {
+    const parsedOption = {};
+    const url = option.getAttribute("data-defaultasin");
+    parsedOption.url = url;
+    try {
+      const image = option.querySelector("img");
+      if (image) {
+        parsedOption.image_url = image.getAttribute("src");
+        parsedOption.name = image.getAttribute("alt");
+      } else {
+        parsedOption.name = option
+          .getAttribute("title")
+          .trim()
+          .match(/(?=Click to select ).*/)[0];
+      }
+    } catch (e) {
+      parsedOption.name = option
+        .getAttribute("title")
+        .trim()
+        .match(/(?=Click to select ).*/)[0];
+    }
+
+    try {
+      const isSelectedOption = option.querySelector("span.a-button-selected");
+      if (isSelectedOption) parsedOption.selectedOption = true;
+    } catch (e) {}
+    result.push(parsedOption);
+  }
+  return result;
+};
+
+const parseAmazonDataOptionsOldDropdownMenu = (optionList) => {
+  const result = [];
+  for (const option of optionList) {
+    const parsedOption = {};
+  }
+  return result;
+};
+
+const fetchAmazonDataOptionsOld = async (page) => {
+  const options = await page.$$eval("form#twister > div", (elems) => {
+    const options = {};
+    for (const elem of elems) {
+      const keyText = elem
+        .querySelector("label.a-form-label")
+        .textContent.trim();
+      const key = keyText.slice(0, -1);
+      options[key] = [];
+
+      let optionList;
+      try {
+        optionList = elem.querySelectorAll(
+          "ul.a-button-list > li[data-defaultasin]"
+        );
+        if (optionList.length === 0) {
+        }
+      } catch (e) {
+        continue;
+      }
+
+      for (const option of optionList) {
+        const parsedOption = {};
+        const url = option.getAttribute("data-defaultasin");
+        parsedOption.url = url;
+        try {
+          const image = option.querySelector("img");
+          if (image) {
+            parsedOption.image_url = image.getAttribute("src");
+            parsedOption.name = image.getAttribute("alt");
+          } else {
+            parsedOption.name = option
+              .getAttribute("title")
+              .trim()
+              .match(/(?=Click to select ).*/)[0];
+          }
+        } catch (e) {
+          parsedOption.name = option
+            .getAttribute("title")
+            .trim()
+            .match(/(?=Click to select ).*/)[0];
+        }
+
+        try {
+          const isSelectedOption = option.querySelector(
+            "span.a-button-selected"
+          );
+          if (isSelectedOption) parsedOption.selectedOption = true;
+        } catch (e) {}
+        options[key].push(parsedOption);
+      }
+    }
+    return options;
+  });
+  return options;
+};
+
+const fetchAmazonDataOptions = async (page) => {
+  const data = [];
+  let options;
+  /*
+  try {
+    await page.waitForNetworkIdle();
+  } catch (e) {
+    console.log("NetworkIdle Timeout");
+  }
+  */
+  try {
+    await page.waitForSelector("form#twister > div", {
+      timeout: 5000,
+    });
+    console.log("Old Page!");
+    options = await fetchAmazonDataOptionsOld(page);
+  } catch (e) {
+    console.log("New Page!");
+    options = await fetchAmazonDataOptionsNew(page);
+  }
+
+  return options;
+};
+
+function getBase64(url) {
+  return axios
+    .get(url, { responseType: "arraybuffer" })
+    .then((response) =>
+      Buffer.from(response.data, "binary").toString("base64")
+    );
+}
+
+const solveCaptcha = async (page) => {
+  const isCaptcha = await page.$("input#captchacharacters");
+  if (!isCaptcha) return null;
+  console.log("It is captcha!!!!!!");
+
+  await page.waitForSelector("img");
+  const url = await page.$eval("img", (elem) => elem.src);
+
+  const img_b64 = await getBase64(url);
+  const { data } = await axios.post(
+    "http://host.docker.internal:7777/solve",
+    { captcha: img_b64 },
+    { headers: { "Content-Type": "application/json" } }
+  );
+  if (data.output.length != 6) return false;
+
+  console.log(`Extracted: ${data.output}`);
+  const val = await page.$eval(
+    "input#captchacharacters",
+    (elem, value) => {
+      elem.value = value;
+      return elem.value;
+    },
+    data.output
+  );
+  await page.click("button.a-button-text");
+  const isCaptchaAgain = await page.$("input#captchacharacters");
+  if (!isCaptchaAgain) console.log("Captcha beaten!!!!!!!!!");
+  return true;
+};
+
+module.exports = fetchAmazonData;
