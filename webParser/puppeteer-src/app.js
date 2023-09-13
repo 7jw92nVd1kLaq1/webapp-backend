@@ -38,12 +38,19 @@ const port = 3000;
     ],
     executablePath: process.env.PUPPETEER_EXEC_PATH,
     env: { DISPLAY: ":0.0" },
-    userDataDir: "/parserFolder/tmp",
   });
 
   // Express.js paths
   app.post("/", async (req, res) => {
     console.log("Request received!!!! Someone made a request");
+    const pages = await browser.pages();
+    if (pages.length > 30) {
+      res.json({
+        status: "-1",
+        reason: "Too many connections right now. Please try again later.",
+      });
+      return;
+    }
     const data = await fetchAmazonData(browser, req.body.url);
     console.log(data);
     res.json(data);

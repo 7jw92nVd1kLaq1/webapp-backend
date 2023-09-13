@@ -74,13 +74,13 @@ class OrderDispute(BaseModel):
 
 class OrderDisputeMessage(BaseModel):
     order_dispute = models.ForeignKey(OrderDispute, on_delete=models.RESTRICT, related_name="dispute_messages")
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    user = models.ForeignKey(User, on_delete=models.RESTRICT)
     message = models.TextField()
 
 
 class OrderMessage(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="messages")
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    order = models.ForeignKey(Order, on_delete=models.RESTRICT, related_name="messages")
+    user = models.ForeignKey(User, on_delete=models.RESTRICT)
     message = models.TextField()
 
 
@@ -131,20 +131,20 @@ class OrderReview(BaseModel):
 
 
 class OrderAddressLink(BaseModel):
-    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
-    address = models.ForeignKey(OrderAddress, on_delete=models.RESTRICT)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    address = models.ForeignKey(OrderAddress, on_delete=models.CASCADE)
 
 
 class OrderPaymentLink(BaseModel):
-    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
-    payment = models.OneToOneField(OrderPayment, on_delete=models.RESTRICT)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    payment = models.OneToOneField(OrderPayment, on_delete=models.CASCADE)
 
 
 class OrderCustomerLink(BaseModel):
-    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
-    customer = models.ForeignKey(User, on_delete=models.RESTRICT)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    customer = models.ForeignKey(User, on_delete=models.CASCADE)
 
 
 class OrderIntermediaryLink(BaseModel):
-    order = models.OneToOneField(Order, on_delete=models.RESTRICT)
-    intermediary = models.ForeignKey(User, on_delete=models.RESTRICT)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    intermediary = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -15,7 +15,8 @@ async function fetchAmazonData(browser, url) {
   const page = await browser.newPage();
   await page.setRequestInterception(true);
 
-  //if the page makes a  request to a resource type of image then abort that request
+  // if the page makes a  request to a resource type of image then abort that request
+  // The purpose of this is to optimize the speed of Puppeteer by aborting all the requests for any image and CSS resources
   page.on("request", (request) => {
     if (
       request.resourceType() === "image" ||
@@ -25,9 +26,11 @@ async function fetchAmazonData(browser, url) {
     else request.continue();
   });
 
+  // Set the size of the viewport of the browser and proceed to a URL provided by a client
   await page.setViewport({ width: 1280, height: 720 });
   await page.goto(url, { waitUntil: "load" });
 
+  // Amazon may deploy the captcha page to solve, then we request an external server for help for solving captcha
   try {
     const captcha = await solveCaptcha(page);
     if (captcha === false) return data;
@@ -36,7 +39,7 @@ async function fetchAmazonData(browser, url) {
     console.log(err);
   }
 
-  console.log(`Page Accessed: ${url}`);
+  // Parse the name of the product
   try {
     const productName = await page.$eval(
       "span#productTitle",
@@ -47,6 +50,7 @@ async function fetchAmazonData(browser, url) {
     data.productName = "undefined";
   }
 
+  // Parase the price of the product
   try {
     const price = await page.$eval(
       ".a-price .a-offscreen",
@@ -57,6 +61,7 @@ async function fetchAmazonData(browser, url) {
     data.price = "undefined";
   }
 
+  // Parse the url of the image of the product
   try {
     const imageurl = await page.$eval("img#landingImage", (image) => image.src);
     data.imageurl = imageurl;
@@ -72,6 +77,7 @@ async function fetchAmazonData(browser, url) {
     }
   }
 
+  // Parse the average rating of the product
   try {
     const rating = await page.$eval(
       "#averageCustomerReviews a span",
@@ -82,6 +88,7 @@ async function fetchAmazonData(browser, url) {
     data.rating = "undefined";
   }
 
+  // Parse the brand of the product
   try {
     const brand = await page.$eval(
       "a#bylineInfo",
@@ -92,11 +99,12 @@ async function fetchAmazonData(browser, url) {
     data.brand = "undefined";
   }
 
-  domainRegex = new RegExp(
+  const domainRegex = new RegExp(
     "^(https://)?(www.)?amazon.(com.tr)?(com.au)?(com.br)?(com)?(co.uk)?(co.jp)?(ae)?(de)?(fr)?(es)?(in)?(nl)?(pl)?(se)?(sg)?(eg)?/"
   );
-  webSiteDomain = await page.url();
+  const webSiteDomain = await page.url();
   data.domain = webSiteDomain.match(domainRegex)[0];
+
   data.options = await fetchAmazonDataOptions(page);
 
   await page.close();

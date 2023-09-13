@@ -6,16 +6,31 @@ const saveText = (fileName, content) => {
     if (err) {
       return console.log(err);
     }
-    console.log("The file was saved!");
+    console.log("The file was saved!!");
   });
 };
 
 async function fetchAmazonData(browser, url) {
   const data = {};
   const page = await browser.newPage();
+  await page.setRequestInterception(true);
+
+  // if the page makes a  request to a resource type of image then abort that request
+  // The purpose of this is to optimize the speed of Puppeteer by aborting all the requests for any image and CSS resources
+  page.on("request", (request) => {
+    if (
+      request.resourceType() === "image" ||
+      request.resourceType() === "stylesheet"
+    )
+      request.abort();
+    else request.continue();
+  });
+
+  // Set the size of the viewport of the browser and proceed to a URL provided by a client
   await page.setViewport({ width: 1280, height: 720 });
   await page.goto(url, { waitUntil: "load" });
 
+  // Amazon may deploy the captcha page to solve, then we request an external server for help for solving captcha
   try {
     const captcha = await solveCaptcha(page);
     if (captcha === false) return data;
@@ -24,7 +39,7 @@ async function fetchAmazonData(browser, url) {
     console.log(err);
   }
 
-  console.log(`Page Accessed: ${url}`);
+  // Parse the name of the product
   try {
     const productName = await page.$eval(
       "span#productTitle",
@@ -35,6 +50,7 @@ async function fetchAmazonData(browser, url) {
     data.productName = "undefined";
   }
 
+  // Parase the price of the product
   try {
     const price = await page.$eval(
       ".a-price .a-offscreen",
@@ -45,6 +61,7 @@ async function fetchAmazonData(browser, url) {
     data.price = "undefined";
   }
 
+  // Parse the url of the image of the product
   try {
     const imageurl = await page.$eval("img#landingImage", (image) => image.src);
     data.imageurl = imageurl;
@@ -60,6 +77,7 @@ async function fetchAmazonData(browser, url) {
     }
   }
 
+  // Parse the average rating of the product
   try {
     const rating = await page.$eval(
       "#averageCustomerReviews a span",
@@ -70,6 +88,7 @@ async function fetchAmazonData(browser, url) {
     data.rating = "undefined";
   }
 
+  // Parse the brand of the product
   try {
     const brand = await page.$eval(
       "a#bylineInfo",
@@ -80,63 +99,91 @@ async function fetchAmazonData(browser, url) {
     data.brand = "undefined";
   }
 
-  domainRegex = new RegExp(
+  const domainRegex = new RegExp(
     "^(https://)?(www.)?amazon.(com.tr)?(com.au)?(com.br)?(com)?(co.uk)?(co.jp)?(ae)?(de)?(fr)?(es)?(in)?(nl)?(pl)?(se)?(sg)?(eg)?/"
   );
-  webSiteDomain = await page.url();
+  const webSiteDomain = await page.url();
   data.domain = webSiteDomain.match(domainRegex)[0];
+
   data.options = await fetchAmazonDataOptions(page);
 
   await page.close();
   return data;
 }
 
-const parseDropDownOptions = async (elemHandle, url) => {};
-
-const parseClickOptions = async (elemHandle) => {};
-
 const fetchAmazonDataOptionsNew = async (page) => {
-  const expandButtons = await page.$$('span[id^="a-autoid"]');
-  for (const button of expandButtons) {
+  console.log("NEW FUNCTION INVOKED");
+  const expandOptionElements = await page.$$('[aria-label^="See"]');
+  for (const elem of expandOptionElements) {
     try {
-      await button.click();
-    } catch (e) {}
+      await page.evaluate((elem) => elem.click(), elem);
+    } catch (e) {
+      console.log("FIRST");
+      console.log(e);
+    }
   }
+  try {
+    await page.waitForSelector("#desktop-configurator-side-sheet > ul", {
+      timeout: 500,
+    });
+    const elems = await page.$$("#desktop-configurator-side-sheet > ul");
+    console.log(elems.length);
+  } catch (e) {
+    console.log("SECOND");
+    console.log(e);
+  }
+
   const options = await page.$$eval(
     "#twister-plus-inline-twister > div",
     (elems) => {
       const options = {};
       for (const elem of elems) {
-        const elementWithKey = elem.querySelector(
-          "span > span.a-color-secondary"
-        );
-        const key = elementWithKey.textContent.trim().slice(0, -1);
-        options[key] = [];
+        let key;
+        try {
+          const elementWithKey = elem.querySelector(
+            "div.a-section.inline-twister-dim-title-value-truncate-expanded > span.a-color-secondary"
+          );
+          key = elementWithKey.textContent.trim().slice(0, -1);
+          options[key] = [];
+        } catch (e) {
+          console.log(e);
+          options["hm"] = [];
+          key = "hm";
+        }
 
         const optionList = elem.querySelectorAll(
-          "ul.a-button-list > li[data-asin]"
+          "ul.a-button-list > li[data-asin], li.dimension-value-list-item-square-image"
         );
         for (const option of optionList) {
           const parsedOption = {};
           const url = option.getAttribute("data-asin");
           if (url) parsedOption.url = url;
+
           try {
             const image = option.querySelector("img[src]");
             if (image) {
               parsedOption.image_url = image.getAttribute("src");
               parsedOption.name = image.getAttribute("alt");
+              if (!parsedOption.name) continue;
             } else parsedOption.name = option.textContent.trim();
           } catch (e) {
             parsedOption.name = option.textContent.trim();
           }
+
+          const unavailable = option.querySelector(".a-button-unavailable");
+          if (!unavailable) {
+            parsedOption.available = true;
+          }
+
           try {
             const isSelectedOption = option.querySelector(
-              'span[aria-checked="true"].a-button-toggle'
+              "span.a-button-selected"
             );
             if (isSelectedOption) {
               parsedOption.selectedOption = true;
             }
           } catch (e) {}
+          console.log(parsedOption);
           options[key].push(parsedOption);
         }
       }
@@ -146,124 +193,143 @@ const fetchAmazonDataOptionsNew = async (page) => {
   return options;
 };
 
-const parseAmazonDataOptionsOldClickOptions = (optionList) => {
+const parseAmazonDataOptionsOldClickOptions = async (optionList, page) => {
   const result = [];
   for (const option of optionList) {
-    const parsedOption = {};
-    const url = option.getAttribute("data-defaultasin");
-    parsedOption.url = url;
-    try {
-      const image = option.querySelector("img");
-      if (image) {
-        parsedOption.image_url = image.getAttribute("src");
-        parsedOption.name = image.getAttribute("alt");
-      } else {
-        parsedOption.name = option
-          .getAttribute("title")
-          .trim()
-          .match(/(?=Click to select ).*/)[0];
-      }
-    } catch (e) {
-      parsedOption.name = option
-        .getAttribute("title")
-        .trim()
-        .match(/(?=Click to select ).*/)[0];
-    }
-
-    try {
-      const isSelectedOption = option.querySelector("span.a-button-selected");
-      if (isSelectedOption) parsedOption.selectedOption = true;
-    } catch (e) {}
-    result.push(parsedOption);
-  }
-  return result;
-};
-
-const parseAmazonDataOptionsOldDropdownMenu = (optionList) => {
-  const result = [];
-  for (const option of optionList) {
-    const parsedOption = {};
-  }
-  return result;
-};
-
-const fetchAmazonDataOptionsOld = async (page) => {
-  const options = await page.$$eval("form#twister > div", (elems) => {
-    const options = {};
-    for (const elem of elems) {
-      const keyText = elem
-        .querySelector("label.a-form-label")
-        .textContent.trim();
-      const key = keyText.slice(0, -1);
-      options[key] = [];
-
-      let optionList;
+    const parsedOption = await page.evaluate((option) => {
+      const parsedOption = {};
+      const url = option.getAttribute("data-defaultasin");
+      parsedOption.url = url;
       try {
-        optionList = elem.querySelectorAll(
-          "ul.a-button-list > li[data-defaultasin]"
-        );
-        if (optionList.length === 0) {
-        }
-      } catch (e) {
-        continue;
-      }
-
-      for (const option of optionList) {
-        const parsedOption = {};
-        const url = option.getAttribute("data-defaultasin");
-        parsedOption.url = url;
-        try {
-          const image = option.querySelector("img");
-          if (image) {
-            parsedOption.image_url = image.getAttribute("src");
-            parsedOption.name = image.getAttribute("alt");
-          } else {
-            parsedOption.name = option
-              .getAttribute("title")
-              .trim()
-              .match(/(?=Click to select ).*/)[0];
-          }
-        } catch (e) {
+        const image = option.querySelector("img");
+        if (image) {
+          parsedOption.image_url = image.getAttribute("src");
+          parsedOption.name = image.getAttribute("alt");
+        } else {
           parsedOption.name = option
             .getAttribute("title")
             .trim()
             .match(/(?=Click to select ).*/)[0];
         }
-
-        try {
-          const isSelectedOption = option.querySelector(
-            "span.a-button-selected"
-          );
-          if (isSelectedOption) parsedOption.selectedOption = true;
-        } catch (e) {}
-        options[key].push(parsedOption);
+      } catch (e) {
+        parsedOption.name = option
+          .getAttribute("title")
+          .trim()
+          .match(/(?=Click to select ).*/)[0];
       }
+      if (option.classList.contains("swatchAvailable"))
+        parsedOption.available = true;
+      else parsedOption.available = false;
+
+      try {
+        const isSelectedOption = option.querySelector("span.a-button-selected");
+        if (isSelectedOption) {
+          parsedOption.selectedOption = true;
+          parsedOption.available = true;
+        }
+      } catch (e) {}
+
+      return parsedOption;
+    }, option);
+    result.push(parsedOption);
+  }
+
+  return result;
+};
+
+const parseAmazonDataOptionsOldDropdownMenu = async (key, page) => {
+  const options = [];
+  const dropdownOptionList = await page.$$(
+    `select[name*="${key.toLowerCase()}"] > option:not([value^="-1"])`
+  );
+
+  for (const choice of dropdownOptionList) {
+    const result = await page.evaluate((choice) => {
+      const parsedOption = {};
+      if (
+        !choice.classList.contains("dropdownSelect") &&
+        !choice.classList.contains("dropdownAvailable") &&
+        !choice.classList.contains("dropdownUnavailable")
+      )
+        return null;
+
+      const urlContainingText = choice.getAttribute("value");
+      const regexSearchResult = urlContainingText.match(/[A-Z0-9]{2,}/);
+      if (regexSearchResult.length >= 1) {
+        parsedOption.url = regexSearchResult[0];
+      }
+
+      parsedOption.name = choice.textContent.trim();
+      parsedOption.available =
+        choice.classList.contains("dropdownSelect") ||
+        choice.classList.contains("dropdownAvailable")
+          ? true
+          : false;
+      if (choice.classList.contains("dropdownSelect"))
+        parsedOption.selectedOption = true;
+
+      return parsedOption;
+    }, choice);
+
+    if (!result) {
+      continue;
     }
-    return options;
-  });
+    options.push(result);
+  }
+  return options;
+};
+
+const fetchAmazonDataOptionsOld = async (page) => {
+  const options = {};
+  const foundOptions = await page.$$("form#twister > div");
+  for (const option of foundOptions) {
+    const key = await page.evaluate((elem) => {
+      const keyText = elem
+        .querySelector("label.a-form-label")
+        .textContent.trim();
+      return keyText.slice(0, -1);
+    }, option);
+    const isButtonList = await option.$$(
+      "ul.a-button-list > li[data-defaultasin]"
+    );
+    if (isButtonList.length > 0) {
+      options[key] = await parseAmazonDataOptionsOldClickOptions(
+        isButtonList,
+        page
+      );
+    } else {
+      options[key] = await parseAmazonDataOptionsOldDropdownMenu(key, page);
+    }
+  }
   return options;
 };
 
 const fetchAmazonDataOptions = async (page) => {
-  const data = [];
   let options;
-  /*
   try {
-    await page.waitForNetworkIdle();
-  } catch (e) {
-    console.log("NetworkIdle Timeout");
-  }
-  */
-  try {
+    const oldForm = await page.$("form#twister > div");
+    /*
     await page.waitForSelector("form#twister > div", {
-      timeout: 5000,
+      timeout: 2000,
     });
-    console.log("Old Page!");
-    options = await fetchAmazonDataOptionsOld(page);
+    */
+    if (oldForm) {
+      console.log("Old Page!");
+      options = await fetchAmazonDataOptionsOld(page);
+    } else {
+      console.log("New Page!");
+      options = await fetchAmazonDataOptionsNew(page);
+    }
   } catch (e) {
+    console.log(e);
     console.log("New Page!");
     options = await fetchAmazonDataOptionsNew(page);
   }
+
+  /*
+  const pageSrcCode = await page.content();
+  saveText("test.html", pageSrcCode);
+  */
 
   return options;
 };
@@ -302,6 +368,7 @@ const solveCaptcha = async (page) => {
     data.output
   );
   await page.click("button.a-button-text");
+  await page.waitForNavigation({ waitUntil: "load" });
   const isCaptchaAgain = await page.$("input#captchacharacters");
   if (!isCaptchaAgain) console.log("Captcha beaten!!!!!!!!!");
   return true;
