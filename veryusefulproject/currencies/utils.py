@@ -1,6 +1,8 @@
 import re
 
-from .models import FiatCurrency, FiatCurrencyRate
+from django.db.models import Q
+
+from .models import CryptoCurrency, FiatCurrency, FiatCurrencyRate
 
 def convert_european_notation_to_american_notation(price):
     commaIndex = 0
@@ -33,3 +35,12 @@ def convert_price_to_dollar(symbol, price):
             return str(price / conversion_rate_against_dollar.last().rate)
 
     return ""
+
+
+def get_orders_cryptocurrency_rate(datetime_str, cryptocurrency_ticker):
+    cryptocurrency = CryptoCurrency.objects.get(ticker=cryptocurrency_ticker)
+    cryptocurrency_rate = cryptocurrency.cryptocurrencyrate_set.filter(
+       Q(created_at__lte=datetime_str) 
+    ).order_by("-created_at").only("rate").first()
+
+    return float(cryptocurrency_rate.rate)

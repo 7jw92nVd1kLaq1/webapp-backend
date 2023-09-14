@@ -3,8 +3,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+
 from veryusefulproject.core.mixins import PaginationHandlerMixin
 from veryusefulproject.currencies.models import CryptoCurrency
+from veryusefulproject.currencies.utils import get_orders_cryptocurrency_rate
 from veryusefulproject.orders.models import Order, OrderItem, OrderReview
 from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
@@ -19,6 +23,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
     pagination_class = RequestsListPagination
     serializer_class = OrderSerializer
 
+    @method_decorator(cache_page(30))
     def get(self, request, *args, **kwargs):
         if not request.user.is_authenticated:
             return Response(status=status.HTTP_401_UNAUTHORIZED)
@@ -47,7 +52,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                 "order_items",
                 queryset=OrderItem.objects.all().only("name", "price")
             )
-        ).only(*only_fields)
+        ).only(*only_fields).filter(status__step=1)
         """
         queryset = Order.objects.select_related(
             "orderaddresslink__address",
@@ -106,6 +111,8 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
         ## Complie a list of average rating of every customer so far since its registration in a page
         user_ratings = {}
         users = set([order["customer"]["customer"]["username"] for order in results if order.get("customer")])
+
+        # iterate over a set of users and calculate the average rating of each user
         for user in users:
             user_avg_rating = OrderReview.objects.filter(user__username=user).aggregate(Avg("rating"))["rating__avg"]
             user_ratings[user] = user_avg_rating
@@ -113,10 +120,10 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
         for x in range(len(results)):
             # Assign the rate of Cryptocurrency at the time of the creation of an order
             if results[x].get("payment", None):
-                cryptocurrency = CryptoCurrency.objects.get(ticker=results[x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["ticker"])
-                cryptocurrency_rate = cryptocurrency.cryptocurrencyrate_set.filter(Q(created_at__lte=results[x]["created_at"])).order_by("created_at").only("rate").last()
+                cryptocurrency_ticker= results[x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["ticker"]
+                serialized_datetime = results[x]["created_at"]
                 
-                data["results"][x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["rate"] = float(cryptocurrency_rate.rate)
+                data["results"][x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["rate"] = get_orders_cryptocurrency_rate(serialized_datetime, cryptocurrency_ticker)
             
             # Assign the average rating to every order of a customer
             if data['results'][x]['customer']:
