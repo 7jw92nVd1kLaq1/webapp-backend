@@ -85,6 +85,8 @@ I would like to give huge credits to [this repository](https://github.com/beemi/
 
 WebParser is an web scraping web server, whose main purpose is to receive a HTTP request with an URL, parse and transfer that parsed data of any given URL to Django celery workers who, in turn, send the data to users of the website. Its capability at the moment is only limited to scraping any product page of Amazon. It's the best to use this software in conjunction with software able to defeat captcha pages, since Amazon is fairly able to detect the bot activities with ease.
 
+The main usage of this parser is for parsing web pages of a small number of origins about products requested by users via the frontend application.
+
 ## Deployment
 
 The following details how to deploy this application.
