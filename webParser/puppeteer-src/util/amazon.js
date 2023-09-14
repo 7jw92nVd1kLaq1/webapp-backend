@@ -342,24 +342,36 @@ function getBase64(url) {
     );
 }
 
+/*
+ * The following function requires the deployment of the server that can solve the captcha
+ * sent by Amazon. The server was implemented by combining the captcha program and the web
+ * framework named "Flask" of Python.
+ */
 const solveCaptcha = async (page) => {
+  // Check if the requested page is a captcha page
   const isCaptcha = await page.$("input#captchacharacters");
   if (!isCaptcha) return null;
   console.log("It is captcha!!!!!!");
 
+  // A captcha comes in a form of a image, whose url is parsed and sent to the captcha
+  // solving server.
   await page.waitForSelector("img");
   const url = await page.$eval("img", (elem) => elem.src);
 
+  // Download and encode the binary of the image using base64, and then it is shipped to
+  // the captcha solving server.
   const img_b64 = await getBase64(url);
   const { data } = await axios.post(
     "http://host.docker.internal:7777/solve",
     { captcha: img_b64 },
     { headers: { "Content-Type": "application/json" } }
   );
+  // if the captcha isn't a string of six letters, the server has failed to solve the captcha.
   if (data.output.length != 6) return false;
 
+  // Plug the solved captcha in to the input element and submit.
   console.log(`Extracted: ${data.output}`);
-  const val = await page.$eval(
+  await page.$eval(
     "input#captchacharacters",
     (elem, value) => {
       elem.value = value;
@@ -368,9 +380,15 @@ const solveCaptcha = async (page) => {
     data.output
   );
   await page.click("button.a-button-text");
+
+  // Wait until the redirect is complete, and decide whether the captcha is solved by looking for
+  // the image of captcha in the web page.
   await page.waitForNavigation({ waitUntil: "load" });
   const isCaptchaAgain = await page.$("input#captchacharacters");
-  if (!isCaptchaAgain) console.log("Captcha beaten!!!!!!!!!");
+  if (isCaptchaAgain) {
+    return false;
+  }
+  console.log("Captcha beaten!!!!!!!!!");
   return true;
 };
 
