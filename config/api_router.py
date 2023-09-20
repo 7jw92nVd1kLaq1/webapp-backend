@@ -6,7 +6,7 @@ from veryusefulproject.core.api.views import CsrfView
 from veryusefulproject.management.api.views import AdminUsersViewSet
 from veryusefulproject.orders.views import UserOrderListView
 from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView
-from veryusefulproject.request_marketplace.api.views import DisplayAvailableOffersView
+from veryusefulproject.request_marketplace.api.views import DisplayAvailableOffersView, SignUpOrderIntermediaryApplicantView
 from veryusefulproject.users.api.views import CheckJWTAccessTokenValidityView, UserRegistrationView, UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
 
 if settings.DEBUG:
@@ -46,4 +46,5 @@ urlpatterns += (
 
 urlpatterns += (
     path("list-requests/", DisplayAvailableOffersView.as_view(), name="list-requests"),
+    path("sign-user-up-order/", SignUpOrderIntermediaryApplicantView.as_view(), name="sign-user-up-order"),
 )

@@ -34,7 +34,6 @@ def get_product_info(url, username):
     json_data['price'] = str(price)
 
     json_data['url'] = re.search(r"(?<=dp\/)[\w]+", url).group()
-    print(json_data['options'])
 
     for option in list(json_data['options'].keys()):
         if len(json_data['options'][option]) < 1:
@@ -48,7 +47,6 @@ def get_product_info(url, username):
 
     json_data["hash"] = generate_hash_hex(json.dumps(json_data).encode("utf-8"))
     json_data["amount"] = 1
-    print(json_data)
 
     channel_name = "{}#{}".format(username, username)
     create_command_payload_and_send("publish", {"item": json_data}, channel_name)

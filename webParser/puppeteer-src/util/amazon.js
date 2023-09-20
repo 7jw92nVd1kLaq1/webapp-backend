@@ -27,7 +27,7 @@ async function fetchAmazonData(browser, url) {
   });
 
   // Set the size of the viewport of the browser and proceed to a URL provided by a client
-  await page.setViewport({ width: 1280, height: 720 });
+  await page.setViewport({ width: 1440, height: 720 });
   await page.goto(url, { waitUntil: "load" });
 
   // Amazon may deploy the captcha page to solve, then we request an external server for help for solving captcha
@@ -112,13 +112,12 @@ async function fetchAmazonData(browser, url) {
 }
 
 const fetchAmazonDataOptionsNew = async (page) => {
-  console.log("NEW FUNCTION INVOKED");
   const expandOptionElements = await page.$$('[aria-label^="See"]');
   for (const elem of expandOptionElements) {
     try {
       await page.evaluate((elem) => elem.click(), elem);
     } catch (e) {
-      console.log("FIRST");
+      console.log(e);
       console.log(e);
     }
   }
@@ -126,10 +125,7 @@ const fetchAmazonDataOptionsNew = async (page) => {
     await page.waitForSelector("#desktop-configurator-side-sheet > ul", {
       timeout: 500,
     });
-    const elems = await page.$$("#desktop-configurator-side-sheet > ul");
-    console.log(elems.length);
   } catch (e) {
-    console.log("SECOND");
     console.log(e);
   }
 
@@ -146,13 +142,12 @@ const fetchAmazonDataOptionsNew = async (page) => {
           key = elementWithKey.textContent.trim().slice(0, -1);
           options[key] = [];
         } catch (e) {
-          console.log(e);
           options["hm"] = [];
           key = "hm";
         }
 
         const optionList = elem.querySelectorAll(
-          "ul.a-button-list > li[data-asin], li.dimension-value-list-item-square-image"
+          "ul.a-button-list > li.dimension-value-list-item-square-image"
         );
         for (const option of optionList) {
           const parsedOption = {};
@@ -304,6 +299,12 @@ const fetchAmazonDataOptionsOld = async (page) => {
   return options;
 };
 
+/*
+ * Amazon arbitrarily sends one of two structurally different pages for products.
+ * They look identical, yet are pretty different in HTML source code.
+ * By looking for the existence of a certain element with a certain ID, you get to
+ * determine which page you are presented with by Amazon.
+ */
 const fetchAmazonDataOptions = async (page) => {
   let options;
   try {
@@ -344,8 +345,8 @@ function getBase64(url) {
 
 /*
  * The following function requires the deployment of the server that can solve the captcha
- * sent by Amazon. The server was implemented by combining the captcha program and the web
- * framework named "Flask" of Python.
+ * sent by Amazon. The server was implemented by combining the captcha solving program and
+ * the web framework named "Flask" of Python.
  */
 const solveCaptcha = async (page) => {
   // Check if the requested page is a captcha page

@@ -7,6 +7,10 @@ Behold My Awesome Project!
 
 License: BSD
 
+## DB Tables
+
+![Screenshot](docs/db.png)
+
 ## Settings
 
 Moved to [settings](http://cookiecutter-django.readthedocs.io/en/latest/settings.html).

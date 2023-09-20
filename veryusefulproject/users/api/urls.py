@@ -1,9 +1,7 @@
 from django.urls import path
 
-from allauth.socialaccount.providers.github.provider import GitHubProvider
-
-from veryusefulproject.users.api.allauth_views import OAuth2CallbackView
-from .adapters import CustomGitHubOAuth2Adapter
+from .allauth_views import OAuth2CallbackView
+from .adapters import CustomGitHubOAuth2Adapter, CustomGitHubProvider as GitHubProvider
 
 github_login_callback = OAuth2CallbackView.adapter_view(CustomGitHubOAuth2Adapter)
 

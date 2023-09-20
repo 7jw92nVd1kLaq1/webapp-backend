@@ -115,7 +115,7 @@ class OrderIntermediaryCandidate(BaseModel):
 
 class OrderReview(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_reviews")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="order_review_user")
+    user = models.ForeignKey(User, on_delete=models.RESTRICT, related_name="order_review_user")
     author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="order_review_author")
     title = models.TextField()
     content = models.TextField()

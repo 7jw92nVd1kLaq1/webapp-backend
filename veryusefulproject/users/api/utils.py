@@ -11,6 +11,8 @@ from django.http.response import HttpResponseRedirect
 from rest_framework.serializers import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken, Token, UntypedToken
 
+from datetime import timedelta
+
 
 User = get_user_model()
 
@@ -76,6 +78,18 @@ def set_tokens_in_cookie(data, response):
         key=settings.SIMPLE_JWT['AUTH_REFRESH_COOKIE'],
         value=data["refresh"],
         max_age=settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'],
+        secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
+        httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
+        samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']
+    )
+
+    return response
+
+def expire_token_in_cookie(response):
+    response.set_cookie(
+        key=settings.SIMPLE_JWT['AUTH_REFRESH_COOKIE'],
+        value="",
+        max_age=timedelta(seconds=1),
         secure=settings.SIMPLE_JWT['AUTH_COOKIE_SECURE'],
         httponly=settings.SIMPLE_JWT['AUTH_COOKIE_HTTP_ONLY'],
         samesite=settings.SIMPLE_JWT['AUTH_COOKIE_SAMESITE']

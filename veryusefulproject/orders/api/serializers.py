@@ -83,9 +83,16 @@ class OrderDisputeSerializer(DynamicFieldsSerializerMixin, serializers.ModelSeri
 
 
 class OrderIntermediaryCandidateSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+    
     class Meta:
         model = OrderIntermediaryCandidate
         fields = '__all__'
+
+    def get_user(self, obj):
+        context = self.context.get("user", {})
+        serializer = UserSerializer(obj.user, context=self.context, **context)
+        return serializer.data
 
 
 class OrderItemSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
@@ -153,45 +160,79 @@ class OrderSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer)
     messages = OrderMessageSerializer(many=True, required=False)
     order_items = serializers.SerializerMethodField()
     order_reviews = serializers.SerializerMethodField()
+    orderintermediarycandidate_set = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = '__all__'
 
+    def get_orderintermediarycandidate_set(self, obj):
+        context = self.context.get("orderintermediarycandidate_set", {})
+        serializer = OrderIntermediaryCandidateSerializer(
+            obj.orderintermediarycandidate_set.all(), 
+            many=True, 
+            **context
+        )
+        return serializer.data 
+
     def get_order_items(self, obj):
         context = self.context.get("order_items", {})
-        serializer = OrderItemSerializer(obj.order_items.all(), many=True, **context)
+        serializer = OrderItemSerializer(
+            obj.order_items.all(), 
+            many=True, 
+            **context
+        )
         return serializer.data
 
     def get_order_reviews(self, obj):
         context = self.context.get("order_reviews", {})
-        serializer = OrderReviewSerializer(obj.order_reviews.all(), many=True, **context)
+        serializer = OrderReviewSerializer(
+            obj.order_reviews.all(), 
+            many=True, 
+            **context
+        )
         return serializer.data
 
     def get_address(self, obj):
         if not hasattr(obj, "orderaddresslink"):
             return None
 
-        serializer = OrderAddressLinkSerializer(obj.orderaddresslink, fields=["address"], context=self.context)
+        serializer = OrderAddressLinkSerializer(
+            obj.orderaddresslink, 
+            fields=["address"], 
+            context=self.context
+        )
         return serializer.data
 
     def get_customer(self, obj):
         if not hasattr(obj, "ordercustomerlink"):
             return None
 
-        serializer = OrderCustomerLinkSerializer(obj.ordercustomerlink, fields=['customer'], context=self.context)
+        serializer = OrderCustomerLinkSerializer(
+            obj.ordercustomerlink, 
+            fields=['customer'], 
+            context=self.context
+        )
         return serializer.data
 
     def get_intermediary(self, obj):
         if not hasattr(obj, "orderintermediarylink"):
             return None
 
-        serializer = OrderIntermediaryLinkSerializer(obj.orderintermediarylink, fields=["intermediary"], context=self.context)
+        serializer = OrderIntermediaryLinkSerializer(
+            obj.orderintermediarylink, 
+            fields=["intermediary"], 
+            context=self.context
+        )
         return serializer.data
 
     def get_payment(self, obj):
         if not hasattr(obj, "orderpaymentlink"):
             return None
         
-        serializer = OrderPaymentLinkSerializer(obj.orderpaymentlink, fields=["payment"], context=self.context)
+        serializer = OrderPaymentLinkSerializer(
+            obj.orderpaymentlink, 
+            fields=["payment"], 
+            context=self.context
+        )
         return serializer.data

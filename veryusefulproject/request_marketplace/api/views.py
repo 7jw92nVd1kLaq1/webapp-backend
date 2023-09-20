@@ -77,7 +77,7 @@ class SignUpOrderIntermediaryApplicantView(CreateAPIView):
             OrderIntermediaryCandidate.objects.create(
                 order=order,
                 user=user,
-                rate=rate
+                rate=(rate/Decimal(100))
             )
             return Response(
                 status=status.HTTP_201_CREATED,
