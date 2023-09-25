@@ -49,7 +49,7 @@ class OrderCustomerLinkSerializer(DynamicFieldsSerializerMixin, serializers.Mode
 
     def get_customer(self, obj):
         customer_obj = obj.customer
-        context = self.context.get("user", {})
+        context = self.context.get("customer", {})
         serializer = UserSerializer(customer_obj, **context)
         return serializer.data
 

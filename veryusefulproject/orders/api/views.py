@@ -13,6 +13,7 @@ from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
 from django.db.models import Q
+from django.db import connection, reset_queries
 
 
 class RequestItemInfoView(APIView):
@@ -48,6 +49,29 @@ class OrderCreationView(APIView):
 
 class OrderRetrieveView(RetrieveAPIView):
     serializer_class = OrderSerializer
+
+    def return_data_for_finding_intermediary(self, order_id):
+        only_fields = [
+            "url_id",
+            "created_at",
+            "additional_request",
+            "status__step",
+            "orderaddresslink__address__name",
+            "orderaddresslink__address__address1",
+            "orderaddresslink__address__address2",
+            "orderaddresslink__address__city",
+            "orderaddresslink__address__state",
+            "orderaddresslink__address__zipcode",
+            "orderaddresslink__address__country",
+            "orderpaymentlink__payment__fiat_currency",
+            "orderpaymentlink__payment__additional_cost",
+            "orderpaymentlink__payment__order_payment_balance",
+            "orderpaymentlink__payment__order_payment_balance__paymemt_method__ticker",
+        ]
+
+        order_qs = Order.objects.prefetch_related(
+            
+        )
 
     def return_data_for_deposit_status(self, order_id):
         deferred_fields = [
