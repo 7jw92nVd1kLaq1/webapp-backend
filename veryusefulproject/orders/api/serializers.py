@@ -169,7 +169,7 @@ class OrderSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer)
     def get_orderintermediarycandidate_set(self, obj):
         context = self.context.get("orderintermediarycandidate_set", {})
         serializer = OrderIntermediaryCandidateSerializer(
-            obj.orderintermediarycandidate_set.all(), 
+            obj.intermediary_candidates, 
             many=True, 
             **context
         )

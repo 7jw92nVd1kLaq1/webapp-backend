@@ -161,7 +161,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                     many=True,
                     fields=["address", "customer", "order_items", "payment", "url_id", "created_at"],
                     context={
-                        "user": {"fields": ["username", "date_joined"]},
+                        "customer": {"fields": ["username", "date_joined"]},
                         "address": {"fields": ["country"]},
                         "payment": {"fields": ["additional_cost", "fiat_currency", "order_payment_balance"]},
                         "order_items": {"fields": ["name", "price", "image_url", "options", "quantity", "url"]},
@@ -175,7 +175,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                 many=True,
                 fields=["address", "customer", "order_items", "payment", "url_id", "created_at"],
                 context={
-                    "user": {"fields": ["username", "date_joined"]},
+                    "customer": {"fields": ["username", "date_joined"]},
                     "address": {"fields": ["country"]},
                     "payment": {"fields": ["additional_cost", "fiat_currency", "order_payment_balance"]},
                     "order_items": {"fields": ["name", "price", "image_url", "options", "quantity", "url"]},

@@ -8,12 +8,11 @@ from ..paginations import ListOrderPagination
 from ..tasks import get_product_info, create_order
 
 from veryusefulproject.core.mixins import PaginationHandlerMixin
-from veryusefulproject.orders.models import Order, OrderStatus
+from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderStatus
 from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
-from django.db.models import Q
-from django.db import connection, reset_queries
+from django.db.models import Prefetch, Q
 
 
 class RequestItemInfoView(APIView):
@@ -48,6 +47,8 @@ class OrderCreationView(APIView):
 
 
 class OrderRetrieveView(RetrieveAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
     serializer_class = OrderSerializer
 
     def return_data_for_finding_intermediary(self, order_id):
@@ -56,6 +57,7 @@ class OrderRetrieveView(RetrieveAPIView):
             "created_at",
             "additional_request",
             "status__step",
+            "orderaddresslink__address",
             "orderaddresslink__address__name",
             "orderaddresslink__address__address1",
             "orderaddresslink__address__address2",
@@ -63,6 +65,7 @@ class OrderRetrieveView(RetrieveAPIView):
             "orderaddresslink__address__state",
             "orderaddresslink__address__zipcode",
             "orderaddresslink__address__country",
+            "orderpaymentlink__payment",
             "orderpaymentlink__payment__fiat_currency",
             "orderpaymentlink__payment__additional_cost",
             "orderpaymentlink__payment__order_payment_balance",
@@ -70,8 +73,37 @@ class OrderRetrieveView(RetrieveAPIView):
         ]
 
         order_qs = Order.objects.prefetch_related(
-            
+            "order_items",
+            Prefetch(
+                "orderintermediarycandidate_set",
+                queryset=OrderIntermediaryCandidate.objects.select_related("user").filter(order__url_id=order_id).only("user", "user__username"),
+                to_attr="intermediary_candidates"
+            )
+        ).select_related(
+            "orderaddresslink__address",
+            "orderpaymentlink__payment__order_payment_balance__payment_method", 
+            "status"
+        ).filter(
+            url_id=order_id
+        ).only(*only_fields)
+
+        if not order_qs.exists():
+            return None
+
+        serializer = self.get_serializer_class()(
+            order_qs.first(),
+            fields=["status", "order_items", "payment", "address", "url_id", "created_at"],
+            context={
+                "order_items": {"fields": ["name", "quantity", "price", "currency", "image_url", "options"]},
+                "payment": {"fields": ["fiat_currency", "additional_cost", "order_payment_balance"]},
+                "order_payment_balance": {"fields": ["payment_method"]},
+                "payment_method": {"fields": ["ticker"]},
+                "user": {"fields": ["username"]}
+            }
         )
+
+        return serializer.data 
+
 
     def return_data_for_deposit_status(self, order_id):
         deferred_fields = [
@@ -132,7 +164,9 @@ class OrderRetrieveView(RetrieveAPIView):
         status_id = order_qs.first().status.step
 
         if status_id == 1:
-            data = self.return_data_for_deposit_status(order_id)
+            data = self.return_data_for_finding_intermediary(order_id)
+            if not data:
+                return Response(status=status.HTTP_404_NOT_FOUND)
             return Response(status=status.HTTP_200_OK, data=data)
         else:
             pass
