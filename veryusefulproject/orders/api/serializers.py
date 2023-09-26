@@ -171,6 +171,7 @@ class OrderSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer)
         serializer = OrderIntermediaryCandidateSerializer(
             obj.intermediary_candidates, 
             many=True, 
+            context=self.context,
             **context
         )
         return serializer.data 

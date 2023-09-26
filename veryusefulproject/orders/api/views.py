@@ -1,3 +1,4 @@
+from re import A
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -8,11 +9,15 @@ from ..paginations import ListOrderPagination
 from ..tasks import get_product_info, create_order
 
 from veryusefulproject.core.mixins import PaginationHandlerMixin
-from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderStatus
+from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderReview, OrderStatus
 from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
-from django.db.models import Prefetch, Q
+from django.contrib.auth import get_user_model
+from django.db.models import Avg, Prefetch, Q
+
+
+User = get_user_model()
 
 
 class RequestItemInfoView(APIView):
@@ -52,6 +57,10 @@ class OrderRetrieveView(RetrieveAPIView):
     serializer_class = OrderSerializer
 
     def return_data_for_finding_intermediary(self, order_id):
+        """
+        Serialize and return all the data needed for picking an intermediary of an order
+        """
+
         only_fields = [
             "url_id",
             "created_at",
@@ -69,7 +78,7 @@ class OrderRetrieveView(RetrieveAPIView):
             "orderpaymentlink__payment__fiat_currency",
             "orderpaymentlink__payment__additional_cost",
             "orderpaymentlink__payment__order_payment_balance",
-            "orderpaymentlink__payment__order_payment_balance__paymemt_method__ticker",
+            "orderpaymentlink__payment__order_payment_balance__payment_method__ticker",
         ]
 
         order_qs = Order.objects.prefetch_related(
@@ -92,17 +101,32 @@ class OrderRetrieveView(RetrieveAPIView):
 
         serializer = self.get_serializer_class()(
             order_qs.first(),
-            fields=["status", "order_items", "payment", "address", "url_id", "created_at"],
+            fields=["status", "order_items", "payment", "address", "url_id", "created_at", "orderintermediarycandidate_set"],
             context={
+                "address": {"fields_exclude": ["created_at", "modified_at", "id"]},
                 "order_items": {"fields": ["name", "quantity", "price", "currency", "image_url", "options"]},
                 "payment": {"fields": ["fiat_currency", "additional_cost", "order_payment_balance"]},
                 "order_payment_balance": {"fields": ["payment_method"]},
-                "payment_method": {"fields": ["ticker"]},
+                "payment_method": {"fields": ["ticker", "cryptocurrencyrate_set"]},
+                "cryptocurrencyrate_set": {"created_at": order_qs.first().created_at, "fields": ["rate"]},
+                "orderintermediarycandidate_set": {"fields": ["user", "rate"]},
                 "user": {"fields": ["username"]}
             }
         )
 
-        return serializer.data 
+        data = serializer.data
+        
+        ## Query a list of intermediaries and each of its average ratings
+        intermediaries = [intermediary['user']['username'] for intermediary in serializer.data["orderintermediarycandidate_set"]]
+        users = User.objects.annotate(avg_rating=Avg("order_review_user__rating")).filter(username__in=intermediaries).only("username")
+        
+        for each in users:
+            for index in range(len(data['orderintermediarycandidate_set'])):
+                if data['orderintermediarycandidate_set'][index]['user']['username'] == each.username:
+                    data['orderintermediarycandidate_set'][index]['user']['average_rating'] = each.avg_rating
+                    break
+                      
+        return data 
 
 
     def return_data_for_deposit_status(self, order_id):

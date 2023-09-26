@@ -34,7 +34,8 @@ def add_order_item(order, item):
         currency=FiatCurrency.objects.get(ticker="USD"),
         price=Decimal(item['price_in_dollar']) if 'price_in_dollar' in item else Decimal(item['price']),
         url=item['url'],
-        options=item['options'])
+        options=extract_selected_options(item['options'])
+    )
 
     print(f"{order_item.name} is successfully created!")
 
@@ -59,7 +60,7 @@ def check_if_amazon_url(url):
     if result:
         return result.group()
 
-    return ""
+    return None
 
 
 def check_if_ebay_url(url):
@@ -90,6 +91,16 @@ def convert_european_notation_to_american_notation(price):
         return re.sub("[\.]", "", price).replace(",", ".")
 
     return price
+
+def extract_selected_options(options):
+    new_options = {}
+    for key in options.keys():
+        for option in options[key]:
+            if "selectedOption" in option:
+                new_options[key] = option
+                break
+
+    return new_options
 
 
 def generate_hash_hex(data):
