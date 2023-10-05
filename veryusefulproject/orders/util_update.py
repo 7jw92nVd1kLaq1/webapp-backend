@@ -1,132 +1,8 @@
-from decimal import Decimal
-import re
-import json
-from hashlib import blake2b
-
-from veryusefulproject.currencies.models import FiatCurrency
-from veryusefulproject.orders.models import OrderItem, OrderItemSeller, Business, Order, OrderIntermediaryCandidate
-from veryusefulproject.orders.api.serializers import OrderSerializer
-
-from django.conf import settings
-from django.contrib.auth import get_user_model
+from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate
 from django.db.models import Avg, Prefetch
 
-AMAZON_LINK_REGEX = "(?:https?://)?(?:[a-zA-Z0-9\-]+\.)?(?:amazon|amzn){1}\.(?P<tld>[a-zA-Z\.]{2,})\/(gp/(?:product|offer-listing|customer-media/product-gallery)/|exec/obidos/tg/detail/-/|o/ASIN/|dp/|(?:[A-Za-z0-9\-]+)/dp/)?(?P<ASIN>[0-9A-Za-z]{10})"
-EBAY_LINK_REGEX = "(ebay\.com\/itm\/\d+)"
-SECRET_KEY_PART = settings.SECRET_KEY[:64].encode("utf-8")
 
-User = get_user_model()
-
-
-def add_order_item(order, item):
-    retailer = check_if_valid_url(item['domain'])
-    if not retailer:
-        retailer = ""
-
-    print(f"Retailer is {retailer}")
-
-    business = Business.objects.get(name=retailer)
-    vendor, vendor_created = OrderItemSeller.objects.get_or_create(name=item["brand"])
-
-    order_item = OrderItem.objects.create(
-        order=order,
-        company=business,
-        seller=vendor,
-        image_url=item['imageurl'],
-        name=item["productName"],
-        quantity=item['amount'],
-        currency=FiatCurrency.objects.get(ticker="USD"),
-        price=Decimal(item['price_in_dollar']) if 'price_in_dollar' in item else Decimal(item['price']),
-        url=item['url'],
-        options=extract_selected_options(item['options'])
-    )
-
-    print(f"{order_item.name} is successfully created!")
-
-
-def check_if_valid_url(url):
-    if check_if_amazon_url(url):
-        return "Amazon"
-
-    if check_if_ebay_url(url):
-        return "eBay"
-
-    return None
-
-
-def check_if_amazon_url(url):
-    result = re.search(AMAZON_LINK_REGEX, url)
-    if result:
-        return result.group()
-
-    result = re.search(
-        "^(https://)?(www.)?amazon.(com.tr)?(com.au)?(com.br)?(com)?(co.uk)?(co.jp)?(ae)?(de)?(fr)?(es)?(in)?(nl)?(pl)?(se)?(sg)?(eg)?/", url)
-    if result:
-        return result.group()
-
-    return None
-
-
-def check_if_ebay_url(url):
-    result = re.search(EBAY_LINK_REGEX, url)
-    if not result:
-        return ""
-
-    return result.group()
-
-
-def convert_european_notation_to_american_notation(price):
-    commaIndex = 0
-    periodIndex = 0
-
-    price = re.sub('[^\d\,\.]', '', price)
-
-    try:
-        commaIndex = price.rindex(',')
-    except:
-        return price
-
-    try:
-        periodIndex = price.rindex('.')
-    except:
-        return price.replace(',', '.')
-
-    if commaIndex > periodIndex:
-        return re.sub("[\.]", "", price).replace(",", ".")
-
-    return price
-
-def extract_selected_options(options):
-    new_options = {}
-    for key in options.keys():
-        for option in options[key]:
-            if "selectedOption" in option:
-                new_options[key] = option
-                break
-
-    return new_options
-
-
-def generate_hash_hex(data):
-    h = blake2b(key=SECRET_KEY_PART, digest_size=64)
-    h.update(data)
-    return h.hexdigest()
-
-
-def verify_item_hash(data):
-    hash_value = data['hash']
-    del data['hash']
-    del data['amount']
-
-    if hash_value == generate_hash_hex(json.dumps(data).encode("utf-8")):
-        return True
-
-    return False
-
-
-### Functions for querying and serializing data for an order from the viewpoint of a customer
-
-def return_data_for_finding_intermediary(order_id):
+def return_data_for_finding_intermediary(self, order_id):
     """
     Serialize and return all the data needed for picking an intermediary of an order
     """
@@ -169,18 +45,9 @@ def return_data_for_finding_intermediary(order_id):
     if not order_qs.exists():
         return None
 
-    serializer = OrderSerializer(
+    serializer = self.get_serializer_class()(
         order_qs.first(),
-        fields=[
-            "status", 
-            "order_items", 
-            "payment", 
-            "address", 
-            "url_id", 
-            "created_at", 
-            "orderintermediarycandidate_set", 
-            "additional_request"
-        ],
+        fields=["status", "order_items", "payment", "address", "url_id", "created_at", "orderintermediarycandidate_set", "additional_request"],
         context={
             "address": {"fields_exclude": ["created_at", "modified_at", "id"]},
             "order_items": {"fields": ["name", "quantity", "price", "currency", "image_url", "options"]},
@@ -208,7 +75,7 @@ def return_data_for_finding_intermediary(order_id):
     return data 
 
 
-def return_data_for_deposit_status(order_id):
+def return_data_for_deposit_status(self, order_id):
     deferred_fields = [
         "status__name",
         "status__desc",
@@ -234,7 +101,7 @@ def return_data_for_deposit_status(order_id):
     if not order_qs.exists():
         return {}
 
-    serializer = OrderSerializer(
+    serializer = self.get_serializer_class()(
         order_qs.first(),
         fields_exclude=[
             "customer",
@@ -254,3 +121,4 @@ def return_data_for_deposit_status(order_id):
     )
 
     return serializer.data
+

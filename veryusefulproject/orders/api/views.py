@@ -1,20 +1,21 @@
-from re import A
 from rest_framework import status
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, UpdateAPIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from ..paginations import ListOrderPagination
 from ..tasks import get_product_info, create_order
+from ..utils import return_data_for_finding_intermediary, return_data_for_deposit_status
 
 from veryusefulproject.core.mixins import PaginationHandlerMixin
-from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderReview, OrderStatus
+from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderStatus
 from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
 from django.contrib.auth import get_user_model
-from django.db.models import Avg, Prefetch, Q
+from django.db import transaction
+from django.db.models import Q
 
 
 User = get_user_model()
@@ -54,127 +55,6 @@ class OrderCreationView(APIView):
 class OrderRetrieveView(RetrieveAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-    serializer_class = OrderSerializer
-
-    def return_data_for_finding_intermediary(self, order_id):
-        """
-        Serialize and return all the data needed for picking an intermediary of an order
-        """
-
-        only_fields = [
-            "url_id",
-            "created_at",
-            "additional_request",
-            "status__step",
-            "orderaddresslink__address",
-            "orderaddresslink__address__name",
-            "orderaddresslink__address__address1",
-            "orderaddresslink__address__address2",
-            "orderaddresslink__address__city",
-            "orderaddresslink__address__state",
-            "orderaddresslink__address__zipcode",
-            "orderaddresslink__address__country",
-            "orderpaymentlink__payment",
-            "orderpaymentlink__payment__fiat_currency",
-            "orderpaymentlink__payment__additional_cost",
-            "orderpaymentlink__payment__order_payment_balance",
-            "orderpaymentlink__payment__order_payment_balance__payment_method__ticker",
-        ]
-
-        order_qs = Order.objects.prefetch_related(
-            "order_items",
-            Prefetch(
-                "orderintermediarycandidate_set",
-                queryset=OrderIntermediaryCandidate.objects.select_related("user").filter(order__url_id=order_id).only("user", "user__username"),
-                to_attr="intermediary_candidates"
-            )
-        ).select_related(
-            "orderaddresslink__address",
-            "orderpaymentlink__payment__order_payment_balance__payment_method", 
-            "status"
-        ).filter(
-            url_id=order_id
-        ).only(*only_fields)
-
-        if not order_qs.exists():
-            return None
-
-        serializer = self.get_serializer_class()(
-            order_qs.first(),
-            fields=["status", "order_items", "payment", "address", "url_id", "created_at", "orderintermediarycandidate_set"],
-            context={
-                "address": {"fields_exclude": ["created_at", "modified_at", "id"]},
-                "order_items": {"fields": ["name", "quantity", "price", "currency", "image_url", "options"]},
-                "payment": {"fields": ["fiat_currency", "additional_cost", "order_payment_balance"]},
-                "order_payment_balance": {"fields": ["payment_method"]},
-                "payment_method": {"fields": ["ticker", "cryptocurrencyrate_set"]},
-                "cryptocurrencyrate_set": {"created_at": order_qs.first().created_at, "fields": ["rate"]},
-                "orderintermediarycandidate_set": {"fields": ["user", "rate"]},
-                "user": {"fields": ["username"]}
-            }
-        )
-
-        data = serializer.data
-        
-        ## Query a list of intermediaries and each of its average ratings
-        intermediaries = [intermediary['user']['username'] for intermediary in serializer.data["orderintermediarycandidate_set"]]
-        users = User.objects.annotate(avg_rating=Avg("order_review_user__rating")).filter(username__in=intermediaries).only("username")
-        
-        for each in users:
-            for index in range(len(data['orderintermediarycandidate_set'])):
-                if data['orderintermediarycandidate_set'][index]['user']['username'] == each.username:
-                    data['orderintermediarycandidate_set'][index]['user']['average_rating'] = each.avg_rating
-                    break
-                      
-        return data 
-
-
-    def return_data_for_deposit_status(self, order_id):
-        deferred_fields = [
-            "status__name",
-            "status__desc",
-            "status__created_at",
-            "status__modified_at",
-            "orderaddresslink__created_at",
-            "orderaddresslink__modified_at",
-            "orderpaymentlink__created_at",
-            "orderpaymentlink__modified_at",
-            "orderpaymentlink__payment__fiat_currency",
-            "orderpaymentlink__payment__discount",
-            "orderpaymentlink__payment__created_at",
-            "orderpaymentlink__payment__modified_at",
-        ]
-        order_qs = Order.objects.prefetch_related("order_items").select_related(
-            "orderaddresslink__address", 
-            "orderpaymentlink__payment__order_payment_balance__payment_method", 
-            "status"
-        ).filter(
-            url_id=order_id
-        ).defer(*deferred_fields)
-
-        if not order_qs.exists():
-            return {}
-
-        serializer = self.get_serializer_class()(
-            order_qs.first(),
-            fields_exclude=[
-                "customer",
-                "intermediary",
-                "orderdispute_set",
-                "messages",
-                "order_reviews"
-            ],
-            context={
-                "address": {"fields": ["address"]},
-                "payment": {"fields_exclude": ["discount", "fiat_currency", "created_at", "modified_at"]},
-                "order_items": {"fields_exclude": ["tracking", "order_identifier", "order", "created_at", "modified_at"]},
-                "order_payment_balance": {"fields": ["payment_method", "deposit_address", "balance"]},
-                "payment_method": {"fields": ["ticker", "name", "cryptocurrencyrate_set"]},
-                "cryptocurrencyrate_set": {"created_at": order_qs.first().created_at, "fields": ["rate"]}
-            }
-        )
-
-        return serializer.data
 
     def retrieve(self, request, *args, **kwargs):
         order_id = kwargs.get("pk", "")
@@ -188,7 +68,7 @@ class OrderRetrieveView(RetrieveAPIView):
         status_id = order_qs.first().status.step
 
         if status_id == 1:
-            data = self.return_data_for_finding_intermediary(order_id)
+            data = return_data_for_finding_intermediary(order_id)
             if not data:
                 return Response(status=status.HTTP_404_NOT_FOUND)
             return Response(status=status.HTTP_200_OK, data=data)
@@ -196,6 +76,53 @@ class OrderRetrieveView(RetrieveAPIView):
             pass
 
         return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the ID of an order."})
+
+
+class OrderUpdateView(UpdateAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderSerializer
+
+    def update_order_intermediary(self, order, data):
+        if not data.get("username", None):
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the username of an intermediary you chose."})
+
+        candidate = OrderIntermediaryCandidate.objects.select_related("user").filter(order=order, user__username=data.get("username"))
+
+        if not candidate.exists():
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "The username you provided is not a part of candidates of this order."})
+
+        with transaction.atomic():
+            try:
+                OrderIntermediaryLink.objects.create(order=order, intermediary=candidate.first().user)
+            except:
+                return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "An error has occurred while assigning a candidate to an intermediary of this order. Please try again."})
+
+            order.status = OrderStatus.objects.get(step=order.status.step+1)
+            order.save()
+
+            data = return_data_for_deposit_status(order.url_id)
+            return Response(status=status.HTTP_201_CREATED, data=data)
+
+
+    def update(self, request, *args, **kwargs):
+        data = request.data
+        if not data.get("order_id", None):
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the ID of an order."})
+
+        order_qs = Order.objects.select_related("status").filter(
+            ordercustomerlink_customer=self.request.user, 
+            url_id=data.get("order_id")
+        ).only("url_id", "status__step")
+
+        if not order_qs.exists():
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "No order with the given order ID exists."})
+
+        order = order_qs.first()
+        order_step = order.status.step
+        if order_step == 1:
+            return self.update_order_intermediary(order, data)
+        return self.update_order_intermediary(order, data)
 
 
 class ListUserOrderView(PaginationHandlerMixin, APIView):
