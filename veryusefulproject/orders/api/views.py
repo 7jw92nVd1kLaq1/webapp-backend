@@ -57,13 +57,13 @@ class OrderRetrieveView(RetrieveAPIView):
     permission_classes = [IsAuthenticated]
 
     def retrieve(self, request, *args, **kwargs):
-        order_id = kwargs.get("pk", "")
-        if not order_id:
+        order_id = kwargs.get("pk", None)
+        if order_id is None:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the ID of an order."})
 
         order_qs = Order.objects.select_related("status").filter(url_id=order_id).only("status__step")
         if not order_qs.exists():
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the valid ID of an order."})
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "There is no order with the provided ID. Please provide the valid ID of an order."})
 
         status_id = order_qs.first().status.step
 
@@ -73,9 +73,10 @@ class OrderRetrieveView(RetrieveAPIView):
                 return Response(status=status.HTTP_404_NOT_FOUND)
             return Response(status=status.HTTP_200_OK, data=data)
         else:
-            pass
-
-        return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the ID of an order."})
+            data = return_data_for_finding_intermediary(order_id)
+            if not data:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+            return Response(status=status.HTTP_200_OK, data=data)
 
 
 class OrderUpdateView(UpdateAPIView):
@@ -84,6 +85,10 @@ class OrderUpdateView(UpdateAPIView):
     serializer_class = OrderSerializer
 
     def update_order_intermediary(self, order, data):
+        """
+        This assigns an intermediary to an order, data must be of \"dict\" type and contain the
+        \"username\" of an intermediary.
+        """
         if not data.get("username", None):
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the username of an intermediary you chose."})
 
@@ -106,12 +111,15 @@ class OrderUpdateView(UpdateAPIView):
 
 
     def update(self, request, *args, **kwargs):
+        if request.method != "PATCH":
+            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
         data = request.data
         if not data.get("order_id", None):
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the ID of an order."})
 
         order_qs = Order.objects.select_related("status").filter(
-            ordercustomerlink_customer=self.request.user, 
+            ordercustomerlink__customer=self.request.user, 
             url_id=data.get("order_id")
         ).only("url_id", "status__step")
 
@@ -122,7 +130,7 @@ class OrderUpdateView(UpdateAPIView):
         order_step = order.status.step
         if order_step == 1:
             return self.update_order_intermediary(order, data)
-        return self.update_order_intermediary(order, data)
+        return Response(status=status.HTTP_400_BAD_REQUEST, data=return_data_for_finding_intermediary(order.url_id))
 
 
 class ListUserOrderView(PaginationHandlerMixin, APIView):

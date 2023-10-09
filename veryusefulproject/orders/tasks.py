@@ -14,7 +14,7 @@ from .utils import add_order_item, check_if_valid_url, generate_hash_hex, verify
 
 from veryusefulproject.core.utils import create_command_payload_and_send
 from veryusefulproject.currencies.utils import convert_european_notation_to_american_notation, convert_price_to_dollar
-from veryusefulproject.payments.models import OrderPayment, OrderPaymentBalance
+from veryusefulproject.payments.models import OrderPayment
 
 User = get_user_model()
 
@@ -63,16 +63,11 @@ def create_order(data, username):
 
     addr = data['shippingAddress']
     with transaction.atomic():
-        payment_balance = OrderPaymentBalance.objects.create(
-            deposit_address="RandomAddressHere",
-            payment_method=CryptoCurrency.objects.get(ticker="BTC"),
-            balance=Decimal(0)
-        )
-        payment = OrderPayment.objects.create(
+        payment = OrderPayment(
             fiat_currency=FiatCurrency.objects.get(ticker="USD"),
-            order_payment_balance=payment_balance,
             additional_cost=Decimal(data['additionalCost'])
         )
+        payment.payment_methods.add(CryptoCurrency.objects.get(ticker="BTC"))
 
         shipping_address, created = OrderAddress.objects.get_or_create(
             name=addr["recipient_name"],

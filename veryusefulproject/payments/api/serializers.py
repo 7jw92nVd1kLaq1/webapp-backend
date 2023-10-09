@@ -1,33 +1,32 @@
 from rest_framework import serializers
 
-from ..models import OrderPayment, OrderPaymentBalance
+from ..models import OrderPayment, OrderPaymentInvoice
 
 from veryusefulproject.core.mixins import DynamicFieldsSerializerMixin
 from veryusefulproject.currencies.api.serializers import CryptoCurrencySerializer
 
 
-class OrderPaymentBalanceSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
-    payment_method = serializers.SerializerMethodField()
-
+class OrderPaymentInvoiceSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
     class Meta:
-        model = OrderPaymentBalance
+        model = OrderPaymentInvoice
         fields = "__all__"
-
-    def get_payment_method(self, obj):
-        context = self.context.get("payment_method", {})
-        serializer = CryptoCurrencySerializer(obj.payment_method, context=self.context, **context)
-        return serializer.data
 
 
 class OrderPaymentSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
-    order_payment_balance = serializers.SerializerMethodField()
+    orderpaymentinvoice_set = serializers.SerializerMethodField()
+    payment_methods = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderPayment
         fields = "__all__"
 
-    def get_order_payment_balance(self, obj):
-        context = self.context.get("order_payment_balance", {})
-        serializer = OrderPaymentBalanceSerializer(obj.order_payment_balance, context=self.context, **context)
+    def get_payment_methods(self, obj):
+        context = self.context.get("payment_method", {})
+        serializer = CryptoCurrencySerializer(obj.payment_methods.all(), many=True, context=self.context, **context)
+        return serializer.data
+
+    def get_orderpaymentinvoice_set(self, obj):
+        context = self.context.get("invoice", {})
+        serializer = OrderPaymentInvoiceSerializer(obj.orderpaymentinvoice_set.all(), many=True, context=self.context, **context)
 
         return serializer.data

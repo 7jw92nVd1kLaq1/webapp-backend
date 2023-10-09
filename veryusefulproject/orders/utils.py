@@ -147,8 +147,6 @@ def return_data_for_finding_intermediary(order_id):
         "orderpaymentlink__payment",
         "orderpaymentlink__payment__fiat_currency",
         "orderpaymentlink__payment__additional_cost",
-        "orderpaymentlink__payment__order_payment_balance",
-        "orderpaymentlink__payment__order_payment_balance__payment_method__ticker",
     ]
 
     order_qs = Order.objects.prefetch_related(
@@ -160,7 +158,7 @@ def return_data_for_finding_intermediary(order_id):
         )
     ).select_related(
         "orderaddresslink__address",
-        "orderpaymentlink__payment__order_payment_balance__payment_method", 
+        "orderpaymentlink__payment",
         "status"
     ).filter(
         url_id=order_id
@@ -184,8 +182,7 @@ def return_data_for_finding_intermediary(order_id):
         context={
             "address": {"fields_exclude": ["created_at", "modified_at", "id"]},
             "order_items": {"fields": ["name", "quantity", "price", "currency", "image_url", "options"]},
-            "payment": {"fields": ["fiat_currency", "additional_cost", "order_payment_balance"]},
-            "order_payment_balance": {"fields": ["payment_method"]},
+            "payment": {"fields_exclude": ["orderpaymentinvoice_set", "created_at", "modified_at"]},
             "payment_method": {"fields": ["ticker", "cryptocurrencyrate_set"]},
             "cryptocurrencyrate_set": {"created_at": order_qs.first().created_at, "fields": ["rate"]},
             "orderintermediarycandidate_set": {"fields": ["user", "rate"]},
@@ -225,7 +222,7 @@ def return_data_for_deposit_status(order_id):
     ]
     order_qs = Order.objects.prefetch_related("order_items").select_related(
         "orderaddresslink__address", 
-        "orderpaymentlink__payment__order_payment_balance__payment_method", 
+        "orderpaymentlink__payment",
         "status"
     ).filter(
         url_id=order_id
@@ -245,9 +242,9 @@ def return_data_for_deposit_status(order_id):
         ],
         context={
             "address": {"fields": ["address"]},
-            "payment": {"fields_exclude": ["discount", "fiat_currency", "created_at", "modified_at"]},
+            "payment": {"fields_exclude": ["created_at", "modified_at"]},
             "order_items": {"fields_exclude": ["tracking", "order_identifier", "order", "created_at", "modified_at"]},
-            "order_payment_balance": {"fields": ["payment_method", "deposit_address", "balance"]},
+            "invoice": {"fields": ["invoice_id"]},
             "payment_method": {"fields": ["ticker", "name", "cryptocurrencyrate_set"]},
             "cryptocurrencyrate_set": {"created_at": order_qs.first().created_at, "fields": ["rate"]}
         }

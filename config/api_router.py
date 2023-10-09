@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter, SimpleRouter
 from veryusefulproject.core.api.views import CsrfView
 from veryusefulproject.management.api.views import AdminUsersViewSet
 from veryusefulproject.orders.views import UserOrderListView
-from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView
+from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView, OrderUpdateView
 from veryusefulproject.request_marketplace.api.views import DisplayAvailableOffersView, SignUpOrderIntermediaryApplicantView
 from veryusefulproject.users.api.views import CheckJWTAccessTokenValidityView, UserRegistrationView, UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
 
@@ -41,7 +41,8 @@ urlpatterns += (
     path("create-order/", OrderCreationView.as_view(), name="create-order"),
     path("list-order/", ListUserOrderView.as_view(), name="list-order"),
     path("test-order/", UserOrderListView.as_view(), name="test-order"),
-    path("order-detail/<uuid:pk>/", OrderRetrieveView.as_view(), name="order-detail")
+    path("order-detail/<uuid:pk>/", OrderRetrieveView.as_view(), name="order-detail"),
+    path("modify-order/", OrderUpdateView.as_view(), name="modify-order")
 )
 
 urlpatterns += (

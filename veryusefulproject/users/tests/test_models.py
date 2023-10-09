@@ -8,9 +8,11 @@ class UserTest(TestCase):
         and second password since there is no requirement for the system to set each distinct 
         password for each user.
         """
-        
+       
+        # Load the custom User model
         self.user_model = get_user_model()
-
+        
+        # Create two users for testing
         user1_username = "asdf1234"
         user1_password = "!ghdi35A93(02@+_2"
         user1_second_password = "8Hd342!fh3@35"
@@ -61,7 +63,7 @@ class UserTest(TestCase):
         user1 = self.user_model.objects.get(username="asdf1234")
         user2 = self.user_model.objects.get(username="asdf5678")
 
-        assert isinstance(user1, self.user_model), "Assertion Failed"
+        assert isinstance(user1, self.user_model)
         assert user1.check_password("!ghdi35A93(02@+_2")
         assert user1.check_second_password("8Hd342!fh3@35")
         self.assertEqual("asdf345234", user1.get_nickname())
