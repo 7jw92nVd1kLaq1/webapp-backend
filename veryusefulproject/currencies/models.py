@@ -38,3 +38,8 @@ class CryptoCurrencyRate(BaseModel):
     cryptocurrency = models.ForeignKey(CryptoCurrency, on_delete=models.CASCADE)
     fiat_currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
     rate = models.DecimalField(max_digits=19, decimal_places=10)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['created_at'])
+        ]

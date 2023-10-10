@@ -47,12 +47,6 @@ class OrderStatus(BaseModel):
     desc = models.TextField()
 
 
-class OrderTrackingNumber(BaseModel):
-    tracking_number = models.CharField(max_length=128, validators=[validate_slug])
-    shipping_company = models.ForeignKey(ShippingCompany, on_delete=models.RESTRICT)
-    shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, default=decimal.Decimal(0))
-
-
 class Order(BaseModel):
     url_id = models.UUIDField(default=uuid4)
     status = models.ForeignKey(OrderStatus, on_delete=models.RESTRICT)
@@ -65,6 +59,31 @@ class Order(BaseModel):
         indexes = [
             models.Index(fields=['url_id'])
         ]
+
+
+class OrderItemSeller(BaseModel):
+    name = models.TextField()
+    desc = models.TextField(default="")
+
+
+class OrderItem(BaseModel):
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_items")
+    company = models.ForeignKey(Business, on_delete=models.RESTRICT)
+    seller = models.ForeignKey(OrderItemSeller, on_delete=models.RESTRICT)
+    currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
+    image_url = models.URLField()
+    name = models.TextField()
+    quantity = models.PositiveIntegerField()
+    price = models.DecimalField(max_digits=11, decimal_places=2)
+    url = models.URLField()
+    options = models.JSONField()
+    order_identifier = models.TextField(null=True, default=None)
+
+
+class OrderTrackingNumber(BaseModel):
+    order_item = models.OneToOneField(OrderItem, null=True, on_delete=models.SET_NULL)
+    tracking_number = models.CharField(max_length=128, validators=[validate_slug])
+    shipping_company = models.ForeignKey(ShippingCompany, on_delete=models.RESTRICT)
 
 
 class OrderDispute(BaseModel):
@@ -82,26 +101,6 @@ class OrderMessage(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.RESTRICT, related_name="messages")
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     message = models.TextField()
-
-
-class OrderItemSeller(BaseModel):
-    name = models.TextField()
-    desc = models.TextField(default="")
-
-
-class OrderItem(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_items")
-    company = models.ForeignKey(Business, on_delete=models.RESTRICT)
-    seller = models.ForeignKey(OrderItemSeller, on_delete=models.RESTRICT)
-    image_url = models.URLField()
-    name = models.TextField()
-    quantity = models.PositiveIntegerField()
-    currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
-    price = models.DecimalField(max_digits=11, decimal_places=2)
-    url = models.URLField()
-    options = models.JSONField()
-    order_identifier = models.TextField()
-    tracking = models.ForeignKey(OrderTrackingNumber, on_delete=models.SET_NULL, null=True)
 
 
 class OrderIntermediaryCandidate(BaseModel):

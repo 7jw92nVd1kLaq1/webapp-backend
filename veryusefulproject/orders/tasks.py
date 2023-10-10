@@ -67,6 +67,7 @@ def create_order(data, username):
             fiat_currency=FiatCurrency.objects.get(ticker="USD"),
             additional_cost=Decimal(data['additionalCost'])
         )
+        payment.save()
         payment.payment_methods.add(CryptoCurrency.objects.get(ticker="BTC"))
 
         shipping_address, created = OrderAddress.objects.get_or_create(

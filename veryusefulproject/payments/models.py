@@ -14,6 +14,12 @@ class OrderPayment(BaseModel):
     payment_methods = models.ManyToManyField(CryptoCurrency)
 
 
+class OrderPaymentPayoutAddress(BaseModel):
+    payment = models.ForeignKey(OrderPayment, on_delete=models.SET_NULL, null=True)
+    cryptocurrency = models.ForeignKey(CryptoCurrency, on_delete=models.SET_NULL, null=True)
+    payout_address = models.TextField()
+
+
 class OrderPaymentInvoice(BaseModel):
     payment = models.ForeignKey(OrderPayment, on_delete=models.CASCADE)
     invoice_id = models.TextField()
