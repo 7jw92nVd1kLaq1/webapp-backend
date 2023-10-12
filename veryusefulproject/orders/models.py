@@ -14,7 +14,6 @@ from veryusefulproject.shipping.models import ShippingCompany
 
 User = get_user_model()
 
-
 class Business(BaseModel):
     ticker = models.CharField(max_length=16, primary_key=True)
     name = models.CharField(max_length=64)
@@ -23,11 +22,13 @@ class Business(BaseModel):
 
 class BusinessUrl(BaseModel):
     business = models.ForeignKey(Business, related_name="urls", on_delete=models.CASCADE)
+    currency = models.ForeignKey(FiatCurrency, related_name="urls", on_delete=models.SET_NULL, null=True)
     url = models.URLField()
+    desc = models.TextField()
 
 
 class BusinessLogo(BaseModel):
-    business = models.ForeignKey(Business, related_name="logos", on_delete=models.SET_NULL, null=True)
+    business = models.ForeignKey(Business, related_name="logos", on_delete=models.CASCADE)
     image = models.ImageField(upload_to="images/logo/%Y/%m/%d")
 
 
@@ -68,7 +69,7 @@ class OrderItemSeller(BaseModel):
 
 class OrderItem(BaseModel):
     order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_items")
-    company = models.ForeignKey(Business, on_delete=models.RESTRICT)
+    website_domain = models.ForeignKey(BusinessUrl, on_delete=models.SET_NULL, null=True)
     seller = models.ForeignKey(OrderItemSeller, on_delete=models.RESTRICT)
     currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
     image_url = models.URLField()

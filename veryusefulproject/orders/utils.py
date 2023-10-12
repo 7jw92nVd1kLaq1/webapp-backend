@@ -4,14 +4,14 @@ import json
 from hashlib import blake2b
 
 from veryusefulproject.currencies.models import FiatCurrency
-from veryusefulproject.orders.models import OrderItem, OrderItemSeller, Business, Order, OrderIntermediaryCandidate
+from veryusefulproject.orders.models import BusinessUrl, OrderItem, OrderItemSeller, Business, Order, OrderIntermediaryCandidate
 from veryusefulproject.orders.api.serializers import OrderSerializer
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Prefetch
 
-AMAZON_LINK_REGEX = "(?:https?://)?(?:[a-zA-Z0-9\-]+\.)?(?:amazon|amzn){1}\.(?P<tld>[a-zA-Z\.]{2,})\/(gp/(?:product|offer-listing|customer-media/product-gallery)/|exec/obidos/tg/detail/-/|o/ASIN/|dp/|(?:[A-Za-z0-9\-]+)/dp/)?(?P<ASIN>[0-9A-Za-z]{10})"
+AMAZON_LINK_REGEX = "^(?:https?://)?(?:[a-zA-Z0-9\-]+\.)?(?:amazon|amzn){1}\.(com\.au|com|co\.uk|co\.jp|de|fr|es|in)\/(gp/(?:product|offer-listing|customer-media/product-gallery)/|exec/obidos/tg/detail/-/|o/ASIN/|dp/|(?:[A-Za-z0-9\-]+)/dp/)?(?P<ASIN>[0-9A-Za-z]{10})"
 EBAY_LINK_REGEX = "(ebay\.com\/itm\/\d+)"
 SECRET_KEY_PART = settings.SECRET_KEY[:64].encode("utf-8")
 
@@ -19,18 +19,15 @@ User = get_user_model()
 
 
 def add_order_item(order, item):
-    retailer = check_if_valid_url(item['domain'])
-    if not retailer:
-        retailer = ""
+    businessUrl = check_if_valid_url(item['url'])
+    if not businessUrl:
+        raise Exception("There is no business with that domain name.")
 
-    print(f"Retailer is {retailer}")
-
-    business = Business.objects.get(name=retailer)
     vendor, vendor_created = OrderItemSeller.objects.get_or_create(name=item["brand"])
 
-    order_item = OrderItem.objects.create(
+    OrderItem.objects.create(
         order=order,
-        company=business,
+        website_domain=businessUrl,
         seller=vendor,
         image_url=item['imageurl'],
         name=item["productName"],
@@ -41,15 +38,14 @@ def add_order_item(order, item):
         options=extract_selected_options(item['options'])
     )
 
-    print(f"{order_item.name} is successfully created!")
-
 
 def check_if_valid_url(url):
     if check_if_amazon_url(url):
-        return "Amazon"
-
-    if check_if_ebay_url(url):
-        return "eBay"
+        try:
+            businessURL = get_businessUrl_amazon(url)
+            return businessURL
+        except Exception as e:
+            print(e)
 
     return None
 
@@ -59,10 +55,14 @@ def check_if_amazon_url(url):
     if result:
         return result.group()
 
-    result = re.search(
-        "^(https://)?(www.)?amazon.(com.tr)?(com.au)?(com.br)?(com)?(co.uk)?(co.jp)?(ae)?(de)?(fr)?(es)?(in)?(nl)?(pl)?(se)?(sg)?(eg)?/", url)
+    return None
+
+
+def get_businessUrl_amazon(url):
+    regex = "(?:amazon|amzn){1}\.(com\.au|com|co\.uk|co\.jp|de|fr|es|in)"
+    result = re.search(regex, url)
     if result:
-        return result.group()
+        return BusinessUrl.objects.select_related("currency").filter(url__contains=result.group()).order_by("-currency__ticker").first()
 
     return None
 

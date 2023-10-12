@@ -21,29 +21,36 @@ User = get_user_model()
 
 @celery_app.task()
 def get_product_info(url, username):
+    businessUrl = check_if_valid_url(url)
+    if not businessUrl:
+        raise Exception("This URL is invalid")
+
     resp = requests.post("http://parser:3000/", json={"url": url})
     json_data = resp.json()
 
     if (json_data['price'] == "undefined"):
-        return
+        raise Exception("The price of an item is unavailable")
 
     currency_symbol = re.search("[^\d\.\,]+", json_data["price"])
-    json_data["currency"] = currency_symbol.group()
+    if not currency_symbol:
+        raise Exception("There is no symbol of currency in price")
+
+    json_data["currency"] = businessUrl.currency.ticker
 
     price = Decimal(convert_european_notation_to_american_notation(json_data['price']))
     json_data['price'] = str(price)
-
-    json_data['url'] = re.search(r"(?<=dp\/)[\w]+", url).group()
+    json_data['url'] = url
+    json_data['domain'] = f"{businessUrl.url}dp/"
 
     for option in list(json_data['options'].keys()):
         if len(json_data['options'][option]) < 1:
             json_data['options'].pop(option)
 
-    price_in_dollar = convert_price_to_dollar(currency_symbol, price)
+    price_in_dollar = convert_price_to_dollar(url, price)
     if price_in_dollar:
         json_data["price_in_dollar"] = price_in_dollar
     elif not price_in_dollar and currency_symbol.group() != "$":
-        return
+        raise Exception("Failed to convert the price of an item to dollar")
 
     json_data["hash"] = generate_hash_hex(json.dumps(json_data).encode("utf-8"))
     json_data["amount"] = 1
@@ -92,10 +99,8 @@ def create_order(data, username):
 
         for item in data['value']:
             if verify_item_hash(item.copy()):
-                print("Item has a valid hash! Yay!")
                 add_order_item(order, item)
             else:
-                print("Not valid hash for an item")
                 create_command_payload_and_send("publish", {"current_status": "-1"}, channel_name)
                 return
 

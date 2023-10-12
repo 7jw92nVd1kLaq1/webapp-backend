@@ -3,6 +3,7 @@ const fetchAmazonData = require("./util/amazon");
 const {
   fetchCurrencyConversionData,
   fetchCryptoCurrencyPrice,
+  fetchCurrencySymbols,
 } = require("./util/currency");
 
 const http = require("http");
@@ -62,7 +63,7 @@ const port = 3000;
   });
 
   app.get("/getCurrencySymbols/", async (req, res) => {
-    const data = await fetchFiatCurrencyData.fetchCurrencySymbols(browser);
+    const data = await fetchCurrencySymbols(browser);
     res.json(data);
   });
 

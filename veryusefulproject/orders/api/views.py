@@ -30,11 +30,6 @@ class RequestItemInfoView(APIView):
 
         if not url:
             return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "You forgot to provide an URL."})
-        """
-        if not check_if_valid_url(url):
-            print("Not a valid URL")
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-        """
 
         get_product_info.delay(url, request.user.get_username())
         return Response(status=status.HTTP_200_OK)

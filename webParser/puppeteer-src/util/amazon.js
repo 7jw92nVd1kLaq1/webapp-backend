@@ -16,7 +16,8 @@ async function fetchAmazonData(browser, url) {
   await page.setRequestInterception(true);
 
   // if the page makes a  request to a resource type of image then abort that request
-  // The purpose of this is to optimize the speed of Puppeteer by aborting all the requests for any image and CSS resources
+  // The purpose of this is to optimize the speed of Puppeteer by aborting all the
+  // requests for any image and CSS resources
   page.on("request", (request) => {
     if (
       request.resourceType() === "image" ||
@@ -30,7 +31,8 @@ async function fetchAmazonData(browser, url) {
   await page.setViewport({ width: 1440, height: 720 });
   await page.goto(url, { waitUntil: "load" });
 
-  // Amazon may deploy the captcha page to solve, then we request an external server for help for solving captcha
+  // Amazon may deploy the captcha page to solve, then we request an external server for
+  // help for solving captcha
   try {
     const captcha = await solveCaptcha(page);
     if (captcha === false) return data;
@@ -98,12 +100,6 @@ async function fetchAmazonData(browser, url) {
   } catch (err) {
     data.brand = "undefined";
   }
-
-  const domainRegex = new RegExp(
-    "^(https://)?(www.)?amazon.(com.tr)?(com.au)?(com.br)?(com)?(co.uk)?(co.jp)?(ae)?(de)?(fr)?(es)?(in)?(nl)?(pl)?(se)?(sg)?(eg)?/"
-  );
-  const webSiteDomain = await page.url();
-  data.domain = webSiteDomain.match(domainRegex)[0];
 
   data.options = await fetchAmazonDataOptions(page);
 

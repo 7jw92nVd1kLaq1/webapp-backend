@@ -3,6 +3,7 @@ import re
 from django.db.models import Q
 
 from .models import CryptoCurrency, FiatCurrency, FiatCurrencyRate
+from veryusefulproject.orders.utils import get_businessUrl_amazon
 
 def convert_european_notation_to_american_notation(price):
     commaIndex = 0
@@ -26,15 +27,17 @@ def convert_european_notation_to_american_notation(price):
     return price
 
 
-def convert_price_to_dollar(symbol, price):
-    if symbol and symbol.group() != "$":
-        symbol = symbol.group().encode("utf-8")
-        qs = FiatCurrency.objects.filter(symbol=symbol)
-        if qs.exists():
-            conversion_rate_against_dollar = FiatCurrencyRate.objects.filter(fiat_currency=qs.first()).order_by("created_at")
-            return str(price / conversion_rate_against_dollar.last().rate)
+def convert_price_to_dollar(url, price):
+    businessUrl = get_businessUrl_amazon(url)
+    if businessUrl.currency.ticker == "USD":
+        return None
 
-    return ""
+    if businessUrl:
+        conversion_rate_against_dollar = FiatCurrencyRate.objects.filter(fiat_currency=businessUrl.currency).order_by("created_at").last().rate
+        return str(price / conversion_rate_against_dollar)
+
+    return None
+
 
 
 def get_orders_cryptocurrency_rate(datetime_str, cryptocurrency_ticker):
