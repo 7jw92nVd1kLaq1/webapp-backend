@@ -25,7 +25,7 @@ class UserTest(TestCase):
         user2_nickname = "asdf567867"
         user2_email = "example1@example.com"
 
-        self.createUser(
+        self.create_User(
             user1_username,
             user1_password,
             user1_second_password,
@@ -33,7 +33,7 @@ class UserTest(TestCase):
             user1_email
         )
 
-        self.createUser(
+        self.create_User(
             user2_username,
             user2_password,
             user2_second_password,
@@ -41,7 +41,7 @@ class UserTest(TestCase):
             user2_email
         )
 
-    def createUser(self, username, password, second_password, nickname, email):
+    def create_User(self, username, password, second_password, nickname, email):
         """
         A helper function for creating a new instance of a User class
         """
@@ -155,3 +155,32 @@ class UserTest(TestCase):
 
         user1.save()
         user2.save()
+
+## Create a class for testing the class CustomUserManager in ./models.py
+class CustomUserManagerTest(TestCase):
+    def setUp(self):
+        """
+        This function is called before each test case, and it loads the custom User model
+        """
+        self.user_model = get_user_model()
+
+    def test_create_user(self):
+        """
+        Test a method 'create_user' in the class CustomUserManager in 
+        veryusefulproject/veryusefulproject/users/models.py
+        """
+
+        # Create a user
+        user = self.user_model.objects.create_user(
+            username="asdf1234",
+            email="john123@example.com",
+            password="!ghdi35A93(02@+_2",
+            second_password="8Hd342!fh3@35",
+            nickname="asdf345234"
+        )
+
+        self.assertEqual(user.get_username(), "asdf1234")
+        self.assertEqual(user.email, "john123@example.com")
+        self.assertTrue(user.check_password("!ghdi35A93(02@+_2"))
+        self.assertTrue(user.check_second_password("8Hd342!fh3@35"))
+        self.assertEqual(user.get_nickname(), "asdf345234")

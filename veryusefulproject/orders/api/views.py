@@ -22,6 +22,11 @@ User = get_user_model()
 
 
 class RequestItemInfoView(APIView):
+    """
+    This view is used to request information about an item from the given URL. No HTTP 
+    method is allowed except POST.
+    """
+
     permission_classes = [AllowAny]
     authentication_classes = [JWTAuthentication]
 
@@ -29,36 +34,58 @@ class RequestItemInfoView(APIView):
         url = request.data.get("url", None)
 
         if not url:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "You forgot to provide an URL."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "You forgot to provide an URL."}
+            )
 
         get_product_info.delay(url, request.user.get_username())
         return Response(status=status.HTTP_200_OK)
 
 
 class OrderCreationView(APIView):
+    """
+    This view is used to create an order. It requires the user to be authenticated. No
+    HTTP method is allowed except POST.
+    """
+
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
     def post(self, request, format=None):
         if not request.user.is_authenticated:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please log-in."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "Please log-in."}
+            )
 
         create_order.delay(request.data, request.user.get_username())
         return Response(status=status.HTTP_200_OK)
 
 
 class OrderRetrieveView(RetrieveAPIView):
+    """
+    This view is used to retrieve an order. It requires the user to be authenticated. No
+    HTTP method is allowed except GET.
+    """
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def retrieve(self, request, *args, **kwargs):
         order_id = kwargs.get("pk", None)
         if order_id is None:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the ID of an order."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "Please provide the ID of an order."}
+            )
 
         order_qs = Order.objects.select_related("status").filter(url_id=order_id).only("status__step")
         if not order_qs.exists():
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "There is no order with the provided ID. Please provide the valid ID of an order."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "There is no order with the provided ID. Please provide the valid ID of an order."}
+            )
 
         status_id = order_qs.first().status.step
 
@@ -75,28 +102,42 @@ class OrderRetrieveView(RetrieveAPIView):
 
 
 class OrderUpdateView(UpdateAPIView):
+    """
+    This view is used to update an order. It requires the user to be authenticated. No
+    HTTP method is allowed except PATCH.
+    """
+
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     serializer_class = OrderSerializer
 
     def update_order_intermediary(self, order, data):
         """
-        This assigns an intermediary to an order, data must be of \"dict\" type and contain the
-        \"username\" of an intermediary.
+        This assigns an intermediary to an order, data must be of \"dict\" type and 
+        contain the \"username\" of an intermediary.
         """
         if not data.get("username", None):
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the username of an intermediary you chose."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "Please provide the username of an intermediary you chose."}
+            )
 
         candidate = OrderIntermediaryCandidate.objects.select_related("user").filter(order=order, user__username=data.get("username"))
 
         if not candidate.exists():
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "The username you provided is not a part of candidates of this order."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "The username you provided is not a part of candidates of this order."}
+            )
 
         with transaction.atomic():
             try:
                 OrderIntermediaryLink.objects.create(order=order, intermediary=candidate.first().user)
             except:
-                return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "An error has occurred while assigning a candidate to an intermediary of this order. Please try again."})
+                return Response(
+                    status=status.HTTP_400_BAD_REQUEST, 
+                    data={"reason": "An error has occurred while assigning a candidate to an intermediary of this order. Please try again."}
+                )
 
             order.status = OrderStatus.objects.get(step=order.status.step+1)
             order.save()
@@ -111,7 +152,10 @@ class OrderUpdateView(UpdateAPIView):
 
         data = request.data
         if not data.get("order_id", None):
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please provide the ID of an order."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "Please provide the ID of an order."}
+            )
 
         order_qs = Order.objects.select_related("status").filter(
             ordercustomerlink__customer=self.request.user, 
@@ -119,24 +163,40 @@ class OrderUpdateView(UpdateAPIView):
         ).only("url_id", "status__step")
 
         if not order_qs.exists():
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "No order with the given order ID exists."})
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={"reason": "No order with the given order ID exists."}
+            )
 
         order = order_qs.first()
         order_step = order.status.step
         if order_step == 1:
             return self.update_order_intermediary(order, data)
-        return Response(status=status.HTTP_400_BAD_REQUEST, data=return_data_for_finding_intermediary(order.url_id))
+        return Response(
+            status=status.HTTP_400_BAD_REQUEST, 
+            data=return_data_for_finding_intermediary(order.url_id)
+        )
 
 
 class ListUserOrderView(PaginationHandlerMixin, APIView):
+    """
+    This view is used to list all orders of the user. It requires the user to be 
+    authenticated. No HTTP method is allowed except GET.
+    """
+
     pagination_class = ListOrderPagination
     serializer_class = OrderSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
     def get_user_all_orders(self):
-        user = self.request.user
+        """
+        This method returns all orders of the user.
+        """
 
+        user = self.request.user
+        
+        # The following queryset selects all orders of the user.
         orders = Order.objects.select_related(
             "status", 
             "orderintermediarylink__intermediary", 
@@ -153,7 +213,8 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
             "url_id", 
             "created_at"
         )
-
+        
+        # It is used to paginate the queryset.
         page = self.paginate_queryset(orders)
         if page is not None:
             serializer = self.get_paginated_response(
@@ -183,8 +244,13 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
         return serializer.data
 
     def get_user_customer_orders(self):
-        user = self.request.user
+        """
+        This method returns all orders of the user as a customer.
+        """
 
+        user = self.request.user
+        
+        # The following queryset selects all orders of the user as a customer.
         orders = Order.objects.select_related(
             "status", 
             "ordercustomerlink__customer"
@@ -198,7 +264,8 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
             "url_id", 
             "created_at"
         )
-
+        
+        # It is used to paginate the queryset.
         page = self.paginate_queryset(orders)
         if page is not None:
             serializer = self.get_paginated_response(
@@ -226,8 +293,13 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
         return serializer.data
 
     def get_user_intermediary_orders(self):
-        user = self.request.user
+        """
+        This method returns all orders of the user as an intermediary.
+        """
 
+        user = self.request.user
+        
+        # The following queryset selects all orders of the user as an intermediary.
         orders = Order.objects.select_related(
             "status", 
             "orderintermediarylink__intermediary"
@@ -241,7 +313,8 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
             "url_id", 
             "created_at"
         )
-
+        
+        # It is used to paginate the queryset.
         page = self.paginate_queryset(orders)
         if page is not None:
             serializer = self.get_paginated_response(
@@ -269,10 +342,11 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
         return serializer.data
 
     def get(self, request):
-        data = None
-        if not request.user.is_authenticated:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"reason": "Please log-in."})
+        """
+        This method is run when the view receives a GET request.
+        """
 
+        data = None
         target = request.query_params.get('for', '')
 
         if not target or target == 'all':
@@ -282,9 +356,6 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
         elif target == 'intermediary':
             data = self.get_user_intermediary_orders()
         else:
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST, 
-                data={"reason": "You have supplied the unknown argument for the parameter \"for\"."}
-            )
+            data = self.get_user_all_orders()
 
         return Response(status=status.HTTP_200_OK, data=data)

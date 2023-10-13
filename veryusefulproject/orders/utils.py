@@ -96,6 +96,7 @@ def convert_european_notation_to_american_notation(price):
 
     return price
 
+
 def extract_selected_options(options):
     new_options = {}
     for key in options.keys():
@@ -114,14 +115,16 @@ def generate_hash_hex(data):
 
 
 def verify_item_hash(data):
-    hash_value = data['hash']
-    del data['hash']
-    del data['amount']
+    try:
+        hash_value = data['hash']
+        del data['hash']
+        del data['amount']
 
-    if hash_value == generate_hash_hex(json.dumps(data).encode("utf-8")):
-        return True
+        if hash_value == generate_hash_hex(json.dumps(data).encode("utf-8")):
+            return True
+    except:
+        return False
 
-    return False
 
 
 ### Functions for querying and serializing data for an order from the viewpoint of a customer

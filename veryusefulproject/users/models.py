@@ -14,6 +14,7 @@ class CustomUserManager(UserManager):
         """
         Create and save a user with the given username, email, and password.
         """
+
         if not username:
             raise ValueError("The given username must be set")
         email = self.normalize_email(email)
@@ -34,6 +35,10 @@ class CustomUserManager(UserManager):
         return user
 
     def create_user(self, username, email=None, password=None, second_password=None, **extra_fields):
+        """
+        Create and save a regular User with the given username, email, and password.
+        """
+
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_superuser", False)
         return self._create_user(username, email, password, second_password, **extra_fields)
@@ -45,7 +50,9 @@ class User(AbstractUser):
     If adding fields that need to be filled at user signup,
     check forms.SignupForm and forms.SocialSignupForms accordingly.
     """
+
     objects = CustomUserManager()
+    roles = models.ManyToManyField("Role")
     nickname = models.CharField(
         _("Nickname of User"),
         blank=True,
@@ -108,7 +115,17 @@ class Role(BaseModel):
     name = models.CharField(max_length=128)
     desc = models.TextField()
     permissions = models.ManyToManyField(Permission)
-    users = models.ManyToManyField(User)
+
+    def add_permissions(self, permissions):
+        existing_permissions = self.permissions.all()
+
+        for permission in permissions:
+            if permission not in existing_permissions:
+                self.permissions.add(permission)
+
+    def remove_permission(self, permission):
+        if permission in self.permissions.all():
+            self.permissions.remove(permission)
 
 
 class UserActivityType(BaseModel):
@@ -137,6 +154,9 @@ class UserAddress(BaseModel):
 
 class UserChat(BaseModel):
     users = models.ManyToManyField(User)
+
+    def get_users(self):
+        return self.users.all()
 
 
 class UserChatMessage(BaseModel):

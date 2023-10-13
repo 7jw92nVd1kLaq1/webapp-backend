@@ -21,6 +21,11 @@ User = get_user_model()
 
 @celery_app.task()
 def get_product_info(url, username):
+    """
+    This function gets the product information from the URL and sends it to the user
+    via WebSocket.
+    """
+
     businessUrl = check_if_valid_url(url)
     if not businessUrl:
         raise Exception("This URL is invalid")
@@ -61,6 +66,11 @@ def get_product_info(url, username):
 
 @celery_app.task()
 def create_order(data, username):
+    """
+    This function creates an order based on the data sent by a user, and sends the 
+    status of the process of creating an order to the user via WebSocket.
+    """
+
     channel_name = "{}#{}".format(username, username)
     create_command_payload_and_send("publish", {"current_status": "0"}, channel_name)
 
