@@ -9,7 +9,7 @@ from django.db import transaction
 from config import celery_app
 from veryusefulproject.currencies.models import CryptoCurrency, FiatCurrency
 
-from .models import Order, OrderAddress, OrderItem, OrderStatus, OrderAddressLink, OrderCustomerLink, OrderPaymentLink
+from .models import Order, OrderAddress, OrderStatus, OrderAddressLink, OrderCustomerLink, OrderPaymentLink
 from .utils import add_order_item, check_if_valid_url, generate_hash_hex, verify_item_hash
 
 from veryusefulproject.core.utils import create_command_payload_and_send
@@ -26,12 +26,20 @@ def get_product_info(url, username):
     via WebSocket.
     """
 
+    ## TODO: At every stage, send the information to a user via Websocket of the current 
+    ## process of the parsing of a product.
+
     businessUrl = check_if_valid_url(url)
     if not businessUrl:
         raise Exception("This URL is invalid")
 
     resp = requests.post("http://parser:3000/", json={"url": url})
     json_data = resp.json()
+
+    ## TODO: Separate the following code excerpt from this into new functions in .utils, 
+    ## since the code below is only catering to the parsing information of Amazon 
+    ## products. Add other utility functions for processing information from other 
+    ## businesses as well, if necessary.
 
     if (json_data['price'] == "undefined"):
         raise Exception("The price of an item is unavailable")
@@ -72,10 +80,18 @@ def create_order(data, username):
     """
 
     channel_name = "{}#{}".format(username, username)
-    create_command_payload_and_send("publish", {"current_status": "0"}, channel_name)
+    create_command_payload_and_send(
+        "publish", 
+        {"current_status": "0"}, 
+        channel_name
+    )
 
     if not data['value']:
-        create_command_payload_and_send("publish", {"current_status": "-1"}, channel_name)
+        create_command_payload_and_send(
+            "publish", 
+            {"current_status": "-1"}, 
+            channel_name
+        )
         return
 
     addr = data['shippingAddress']
@@ -101,19 +117,38 @@ def create_order(data, username):
             additional_request=data['additionalRequest'],
         )
 
-        OrderAddressLink.objects.create(order=order, address=shipping_address)
-        OrderCustomerLink.objects.create(order=order, customer=User.objects.get(username=username))
+        OrderAddressLink.objects.create(
+            order=order, 
+            address=shipping_address
+        )
+        OrderCustomerLink.objects.create(
+            order=order, 
+            customer=User.objects.get(username=username)
+        )
         OrderPaymentLink.objects.create(order=order, payment=payment)
 
-        create_command_payload_and_send("publish", {"current_status": "1"}, channel_name)
+        create_command_payload_and_send(
+            "publish", 
+            {"current_status": "1"}, 
+            channel_name
+        )
 
         for item in data['value']:
+            # Check if the data of each item is tampered with
             if verify_item_hash(item.copy()):
                 add_order_item(order, item)
             else:
-                create_command_payload_and_send("publish", {"current_status": "-1"}, channel_name)
+                create_command_payload_and_send(
+                    "publish", 
+                    {"current_status": "-1"}, 
+                    channel_name
+                )
                 return
 
-        create_command_payload_and_send("publish", {"current_status": "2"}, channel_name)
+        create_command_payload_and_send(
+            "publish", 
+            {"current_status": "2"}, 
+            channel_name
+        )
 
         print(f"Order {order.url_id} creation Completed!")
