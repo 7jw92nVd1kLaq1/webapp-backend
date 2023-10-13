@@ -16,7 +16,7 @@ class PreventSuspendedUsersMiddleware(MiddlewareMixin):
         if not value:
             return None
 
-        if value[0].role_set.filter(name="Suspended").exists():
+        if value[0].roles.filter(name="Suspended").exists():
             raise PermissionDenied("This user is suspended.")
 
     def process_view(self, request, callback, callback_args, callback_kwargs):

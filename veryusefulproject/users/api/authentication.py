@@ -24,7 +24,7 @@ class JWTAuthentication(BaseJWTAuthentication):
         except self.user_model.DoesNotExist:
             raise AuthenticationFailed(_("User not found"), code="user_not_found")
 
-        if user.role_set.filter(name=settings.USER_SUSPENDED_ROLE_NAME).exists():
+        if user.roles.filter(name=settings.USER_SUSPENDED_ROLE_NAME).exists():
             raise AuthenticationFailed(_("User is suspended"), code="user_suspended")
 
         if not user.is_active:
