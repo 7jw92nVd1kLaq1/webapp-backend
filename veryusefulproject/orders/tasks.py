@@ -14,6 +14,7 @@ from .utils import add_order_item, check_if_valid_url, generate_hash_hex, verify
 
 from veryusefulproject.core.utils import create_command_payload_and_send
 from veryusefulproject.currencies.utils import convert_european_notation_to_american_notation, convert_price_to_dollar
+from veryusefulproject.notifications.generate_notifications import create_notification_for_successful_order_creation
 from veryusefulproject.payments.models import OrderPayment
 
 User = get_user_model()
@@ -78,7 +79,7 @@ def create_order(data, username):
     This function creates an order based on the data sent by a user, and sends the 
     status of the process of creating an order to the user via WebSocket.
     """
-
+    user = User.objects.get(username=username)
     channel_name = "{}#{}".format(username, username)
     create_command_payload_and_send(
         "publish", 
@@ -123,7 +124,7 @@ def create_order(data, username):
         )
         OrderCustomerLink.objects.create(
             order=order, 
-            customer=User.objects.get(username=username)
+            customer=user
         )
         OrderPaymentLink.objects.create(order=order, payment=payment)
 
@@ -150,5 +151,6 @@ def create_order(data, username):
             {"current_status": "2"}, 
             channel_name
         )
-
+        
+        create_notification_for_successful_order_creation(order, user)
         print(f"Order {order.url_id} creation Completed!")

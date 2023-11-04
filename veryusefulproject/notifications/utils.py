@@ -75,8 +75,10 @@ def stringify_notification(notification_object):
 
     How does it work?
     1. Fetch the action object of a notification.
-    2. Parse the "action" property of the action object, and see what needs to be
-    queried, in order to compose a string representation of the notification.
+    2. Parse the "action" property of the action object by identifying all the 
+    placeholder substrings (strings that start and end with curly braces) and seeing
+    what models need to be queried, in order to compose a string representation of the 
+    notification.
     3. Query the necessary models, and compose the string representation.
     4. Return the string representation.
     """

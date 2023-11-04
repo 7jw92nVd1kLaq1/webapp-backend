@@ -8,6 +8,7 @@ from veryusefulproject.orders.views import UserOrderListView
 from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView, OrderUpdateView
 from veryusefulproject.request_marketplace.api.views import DisplayAvailableOffersView, SignUpOrderIntermediaryApplicantView
 from veryusefulproject.users.api.views import CheckJWTAccessTokenValidityView, UserRegistrationView, UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
+from veryusefulproject.notifications.api.views import RetrieveNotificationsView, MarkNotificationAsReadView
 
 if settings.DEBUG:
     router = DefaultRouter()
@@ -36,6 +37,7 @@ urlpatterns += (
     path("check-acc-token/", CheckJWTAccessTokenValidityView.as_view(), name="check-acc-token"),
 )
 
+# Order-Related Views
 urlpatterns += (
     path("parseItemURL/", RequestItemInfoView.as_view(), name="parse-item-url"),
     path("create-order/", OrderCreationView.as_view(), name="create-order"),
@@ -45,7 +47,14 @@ urlpatterns += (
     path("modify-order/", OrderUpdateView.as_view(), name="modify-order")
 )
 
+# Request-Marketplace-Related Views
 urlpatterns += (
     path("list-requests/", DisplayAvailableOffersView.as_view(), name="list-requests"),
     path("sign-user-up-order/", SignUpOrderIntermediaryApplicantView.as_view(), name="sign-user-up-order"),
+)
+
+# Notifications-Related Views
+urlpatterns += (
+    path("retrieve-notifications/", RetrieveNotificationsView.as_view(), name="retrieve-notifications"),
+    path("mark-notification-as-read/", MarkNotificationAsReadView.as_view(), name="mark-notification-as-read"),
 )

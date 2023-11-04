@@ -115,8 +115,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
             "ordercustomerlink__customer__date_joined",
             "orderpaymentlink__payment__additional_cost",
             "orderpaymentlink__payment__fiat_currency__symbol",
-            "orderpaymentlink__payment__fiat_currency__ticker",
-            "orderpaymentlink__payment__order_payment_balance__payment_method__ticker",
+            "orderpaymentlink__payment__fiat_currency__ticker"
         ]
 
         username = request.user.get_username()
@@ -125,7 +124,6 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
             "orderaddresslink__address",
             "ordercustomerlink__customer",
             "orderpaymentlink__payment__fiat_currency",
-            "orderpaymentlink__payment__order_payment_balance__payment_method",
         ).prefetch_related(
             Prefetch(
                 "order_items",
@@ -163,9 +161,9 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                     context={
                         "customer": {"fields": ["username", "date_joined"]},
                         "address": {"fields": ["country"]},
-                        "payment": {"fields": ["additional_cost", "fiat_currency", "order_payment_balance"]},
+                        "payment": {"fields": ["additional_cost", "fiat_currency", "payment_methods"]},
+                        "payment_methods": {"fields": ["name", "ticker"]},
                         "order_items": {"fields": ["name", "price", "image_url", "options", "quantity", "url"]},
-                        "order_payment_balance": {"fields": ["payment_method"]},
                     }
                 ).data
             )
@@ -177,9 +175,9 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                 context={
                     "customer": {"fields": ["username", "date_joined"]},
                     "address": {"fields": ["country"]},
-                    "payment": {"fields": ["additional_cost", "fiat_currency", "order_payment_balance"]},
+                    "payment": {"fields": ["additional_cost", "fiat_currency", "payment_methods"]},
+                    "payment_methods": {"fields": ["name", "ticker"]},
                     "order_items": {"fields": ["name", "price", "image_url", "options", "quantity", "url"]},
-                    "order_payment_balance": {"fields": ["payment_method"]},
                 }
             )
 
@@ -198,10 +196,10 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
         for x in range(len(results)):
             # Assign the rate of Cryptocurrency at the time of the creation of an order
             if results[x].get("payment", None):
-                cryptocurrency_ticker = results[x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["ticker"]
+                cryptocurrency_ticker = results[x]["payment"]["payment"]["payment_methods"][0]["ticker"]
                 serialized_datetime = results[x]["created_at"]
 
-                data["results"][x]["payment"]["payment"]["order_payment_balance"]["payment_method"]["rate"] = get_orders_cryptocurrency_rate(
+                data["results"][x]["payment"]["payment"]["payment_methods"][0]["rate"] = get_orders_cryptocurrency_rate(
                     serialized_datetime, cryptocurrency_ticker)
 
             # Assign the average rating to every order of a customer

@@ -6,15 +6,14 @@ from rest_framework.response import Response
 
 from ..paginations import ListOrderPagination
 from ..tasks import get_product_info, create_order
-from ..utils import return_data_for_finding_intermediary, return_data_for_deposit_status
+from ..utils import return_data_for_finding_intermediary, return_data_for_deposit_status, update_order_additional_info, update_order_intermediary
 
 from veryusefulproject.core.mixins import PaginationHandlerMixin
-from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderStatus
+from veryusefulproject.orders.models import Order, OrderAddress, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderStatus
 from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
 from django.db.models import Q
 
 
@@ -111,42 +110,11 @@ class OrderUpdateView(UpdateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = OrderSerializer
 
-    def update_order_intermediary(self, order, data):
-        """
-        This assigns an intermediary to an order, data must be of \"dict\" type and 
-        contain the \"username\" of an intermediary.
-        """
-        if not data.get("username", None):
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST, 
-                data={"reason": "Please provide the username of an intermediary you chose."}
-            )
-
-        candidate = OrderIntermediaryCandidate.objects.select_related("user").filter(order=order, user__username=data.get("username"))
-
-        if not candidate.exists():
-            return Response(
-                status=status.HTTP_400_BAD_REQUEST, 
-                data={"reason": "The username you provided is not a part of candidates of this order."}
-            )
-
-        with transaction.atomic():
-            try:
-                OrderIntermediaryLink.objects.create(order=order, intermediary=candidate.first().user)
-            except:
-                return Response(
-                    status=status.HTTP_400_BAD_REQUEST, 
-                    data={"reason": "An error has occurred while assigning a candidate to an intermediary of this order. Please try again."}
-                )
-
-            order.status = OrderStatus.objects.get(step=order.status.step+1)
-            order.save()
-
-            data = return_data_for_deposit_status(order.url_id)
-            return Response(status=status.HTTP_201_CREATED, data=data)
-
-
     def update(self, request, *args, **kwargs):
+        """
+        This method is used to update an existing order, and fully processes when the 
+        view receives a PATCH request.
+        """
         if request.method != "PATCH":
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
@@ -171,7 +139,10 @@ class OrderUpdateView(UpdateAPIView):
         order = order_qs.first()
         order_step = order.status.step
         if order_step == 1:
-            return self.update_order_intermediary(order, data)
+            if data.get("for", None) == "update_additional_info":
+                return update_order_additional_info(order, data)
+            return update_order_intermediary(order, data)
+
         return Response(
             status=status.HTTP_400_BAD_REQUEST, 
             data=return_data_for_finding_intermediary(order.url_id)
@@ -221,7 +192,14 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
                 self.serializer_class(
                     page, 
                     many=True, 
-                    fields=["status", "customer", "intermediary", "order_items", "url_id", "created_at"], 
+                    fields=[
+                        "status", 
+                        "customer", 
+                        "intermediary", 
+                        "order_items", 
+                        "url_id", 
+                        "created_at"
+                    ], 
                     context={
                         "intermediary": {"fields": ["username"]}, 
                         "customer": {"fields": ["username"]}, 
@@ -234,7 +212,14 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
             serializer = self.serializer_class(
                 orders, 
                 many=True, 
-                fields=["status", "customer", "intermediary", "order_items", "url_id", "created_at"], 
+                fields=[
+                    "status", 
+                    "customer", 
+                    "intermediary", 
+                    "order_items", 
+                    "url_id", 
+                    "created_at"
+                ], 
                 context={
                     "intermediary": {"fields": ["username"]}, 
                     "customer": {"fields": ["username"]}, 
@@ -272,7 +257,13 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
                 self.serializer_class(
                     page, 
                     many=True, 
-                    fields=["status", "customer", "order_items", "url_id", "created_at"], 
+                    fields=[
+                        "status", 
+                        "customer", 
+                        "order_items", 
+                        "url_id", 
+                        "created_at"
+                    ], 
                     context={
                         "customer": {"fields": ["username"]}, 
                         "order_items": {"fields": ["name"]}
@@ -283,7 +274,13 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
             serializer = self.serializer_class(
                 orders, 
                 many=True, 
-                fields=["status", "customer", "order_items", "url_id", "created_at"], 
+                fields=[
+                    "status", 
+                    "customer", 
+                    "order_items", 
+                    "url_id", 
+                    "created_at"
+                ], 
                 context={
                     "customer": {"fields": ["username"]}, 
                     "order_items": {"fields": ["name"]}
@@ -321,7 +318,13 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
                 self.serializer_class(
                     page, 
                     many=True, 
-                    fields=["status", "intermediary", "order_items", "url_id", "created_at"], 
+                    fields=[
+                        "status", 
+                        "intermediary", 
+                        "order_items", 
+                        "url_id", 
+                        "created_at"
+                    ], 
                     context={
                         "intermediary": {"fields": ["username"]}, 
                         "order_items": {"fields": ['name']}
@@ -332,7 +335,13 @@ class ListUserOrderView(PaginationHandlerMixin, APIView):
             serializer = self.serializer_class(
                 orders, 
                 many=True, 
-                fields=["status", "intermediary", "order_items", "url_id", "created_at"], 
+                fields=[
+                    "status", 
+                    "intermediary", 
+                    "order_items", 
+                    "url_id", 
+                    "created_at"
+                ], 
                 context={
                     "intermediary": {"fields": ["username"]}, 
                     "order_items": {"fields": ['name']}

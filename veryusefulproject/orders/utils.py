@@ -4,14 +4,22 @@ import json
 from hashlib import blake2b
 
 from veryusefulproject.currencies.models import FiatCurrency
-from veryusefulproject.orders.models import BusinessUrl, OrderItem, OrderItemSeller, Business, Order, OrderIntermediaryCandidate
+from veryusefulproject.orders.models import BusinessUrl, OrderItem, OrderItemSeller, Order, OrderIntermediaryCandidate, OrderAddress, OrderIntermediaryLink, OrderStatus
 from veryusefulproject.orders.api.serializers import OrderSerializer
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Avg, Prefetch
+from django.utils.html import escape
 
-AMAZON_LINK_REGEX = "^(?:https?://)?(?:[a-zA-Z0-9\-]+\.)?(?:amazon|amzn){1}\.(com\.au|com|co\.uk|co\.jp|de|fr|es|in)\/(gp/(?:product|offer-listing|customer-media/product-gallery)/|exec/obidos/tg/detail/-/|o/ASIN/|dp/|(?:[A-Za-z0-9\-]+)/dp/)?(?P<ASIN>[0-9A-Za-z]{10})"
+from rest_framework import status
+from rest_framework.response import Response
+
+AMAZON_LINK_REGEX = "^(?:https?://)?(?:[a-zA-Z0-9\-]+\.)?(?:amazon|amzn){1}\.(com\.au|" \
+        "com|co\.uk|co\.jp|de|fr|es|in)\/(gp/(?:product|offer-listing|customer-media/" \
+        "product-gallery)/|exec/obidos/tg/detail/-/|o/ASIN/|dp/|(?:[A-Za-z0-9\-]+)/dp/" \
+        ")?(?P<ASIN>[0-9A-Za-z]{10})"
 EBAY_LINK_REGEX = "(ebay\.com\/itm\/\d+)"
 SECRET_KEY_PART = settings.SECRET_KEY[:64].encode("utf-8")
 
@@ -62,7 +70,8 @@ def get_businessUrl_amazon(url):
     regex = "(?:amazon|amzn){1}\.(com\.au|com|co\.uk|co\.jp|de|fr|es|in)"
     result = re.search(regex, url)
     if result:
-        return BusinessUrl.objects.select_related("currency").filter(url__contains=result.group()).order_by("-currency__ticker").first()
+        return BusinessUrl.objects.select_related("currency").filter(
+            url__contains=result.group()).order_by("-currency__ticker").first()
 
     return None
 
@@ -126,8 +135,11 @@ def verify_item_hash(data):
         return False
 
 
+def escape_xss_characters(string):
+    return escape(string)
 
-### Functions for querying and serializing data for an order from the viewpoint of a customer
+
+# Functions for querying and serializing data for an order from the viewpoint of a customer
 
 def return_data_for_finding_intermediary(order_id):
     """
@@ -156,7 +168,8 @@ def return_data_for_finding_intermediary(order_id):
         "order_items",
         Prefetch(
             "orderintermediarycandidate_set",
-            queryset=OrderIntermediaryCandidate.objects.select_related("user").filter(order__url_id=order_id).only("user", "user__username"),
+            queryset=OrderIntermediaryCandidate.objects.select_related("user").filter(
+                order__url_id=order_id).only("user", "user__username"),
             to_attr="intermediary_candidates"
         )
     ).select_related(
@@ -184,10 +197,27 @@ def return_data_for_finding_intermediary(order_id):
         ],
         context={
             "address": {"fields_exclude": ["created_at", "modified_at", "id"]},
-            "order_items": {"fields": ["name", "quantity", "price", "currency", "image_url", "options"]},
-            "payment": {"fields_exclude": ["orderpaymentinvoice_set", "created_at", "modified_at"]},
-            "payment_method": {"fields": ["ticker", "cryptocurrencyrate_set"]},
-            "cryptocurrencyrate_set": {"created_at": order_qs.first().created_at, "fields": ["rate"]},
+            "order_items": {
+                "fields": [
+                    "name", 
+                    "quantity", 
+                    "price", 
+                    "currency", 
+                    "image_url", 
+                    "options"
+                ]
+            },
+            "payment": {
+                "fields_exclude": [
+                    "orderpaymentinvoice_set", 
+                    "created_at", 
+                    "modified_at"
+                ]
+            },
+            "payment_methods": {"fields": ["ticker", "cryptocurrencyrate_set"]},
+            "cryptocurrencyrate_set": {
+                "created_at": order_qs.first().created_at, "fields": ["rate"]
+            },
             "orderintermediarycandidate_set": {"fields": ["user", "rate"]},
             "user": {"fields": ["username"]}
         }
@@ -196,8 +226,12 @@ def return_data_for_finding_intermediary(order_id):
     data = serializer.data
     
     ## Query a list of intermediaries and each of its average ratings
-    intermediaries = [intermediary['user']['username'] for intermediary in serializer.data["orderintermediarycandidate_set"]]
-    users = User.objects.annotate(avg_rating=Avg("order_review_user__rating")).filter(username__in=intermediaries).only("username")
+    intermediaries = [intermediary['user']['username'] 
+        for intermediary in serializer.data["orderintermediarycandidate_set"]
+    ]
+    users = User.objects.annotate(
+        avg_rating=Avg("order_review_user__rating")
+    ).filter(username__in=intermediaries).only("username")
     
     for each in users:
         for index in range(len(data['orderintermediarycandidate_set'])):
@@ -246,11 +280,106 @@ def return_data_for_deposit_status(order_id):
         context={
             "address": {"fields": ["address"]},
             "payment": {"fields_exclude": ["created_at", "modified_at"]},
-            "order_items": {"fields_exclude": ["tracking", "order_identifier", "order", "created_at", "modified_at"]},
+            "order_items": {
+                "fields_exclude": [
+                    "tracking", 
+                    "order_identifier", 
+                    "order", 
+                    "created_at", 
+                    "modified_at"
+                ]
+            },
             "invoice": {"fields": ["invoice_id"]},
-            "payment_method": {"fields": ["ticker", "name", "cryptocurrencyrate_set"]},
-            "cryptocurrencyrate_set": {"created_at": order_qs.first().created_at, "fields": ["rate"]}
+            "payment_methods": {"fields": ["ticker", "name", "cryptocurrencyrate_set"]},
+            "cryptocurrencyrate_set": {
+                "created_at": order_qs.first().created_at, 
+                "fields": ["rate"]
+            }
         }
     )
 
     return serializer.data
+
+
+
+def update_order_additional_info(order, data):
+    if order.status.step != 1:
+        return Response(
+            status=status.HTTP_400_BAD_REQUEST, 
+            data={
+                "reason": "You can't update the additional information of this order,"  
+                "since it has progressed past the step of finding an intermediary."
+            }
+        )
+
+    if not data.get("additional_request", None) and not data.get("address", None):
+        return Response(
+            status=status.HTTP_400_BAD_REQUEST, 
+            data={
+                "reason": "Please provide the additional information you want to" 
+                " update. You can update either the additional request or the address."
+            }
+        )
+
+    with transaction.atomic():
+        if data.get("additional_request", None):
+            order.additional_request = escape_xss_characters(data.get("additional_request"))
+            order.save()
+
+        if data.get("address", None):
+            for key in data["address"].keys():
+                data["address"][key] = escape_xss_characters(data["address"][key])
+
+            OrderAddress.objects.filter(id=order.orderaddresslink.address.id).update(**data["address"])
+
+    return Response(
+        status=status.HTTP_200_OK, 
+        data=return_data_for_finding_intermediary(order.url_id)
+    )
+
+
+def update_order_intermediary(order, data):
+    """
+    This assigns an intermediary to an order. The parameter \"data\" must be of \"dict\" 
+    type and contain the \"username\" of an intermediary.
+    """
+
+    ## TODO: Separate this method from the view.
+    if not data.get("username", None):
+        return Response(
+            status=status.HTTP_400_BAD_REQUEST, 
+            data={"reason": "Please provide the username of an intermediary you chose."}
+        )
+
+    candidate = OrderIntermediaryCandidate.objects.select_related("user").filter(
+        order=order, user__username=data.get("username")
+    )
+
+    if not candidate.exists():
+        return Response(
+            status=status.HTTP_400_BAD_REQUEST, 
+            data={
+                "reason": "The username you provided is not a part of candidates of this order."
+            }
+        )
+
+    with transaction.atomic():
+        try:
+            OrderIntermediaryLink.objects.create(
+                order=order, 
+                intermediary=candidate.first().user
+            )
+        except:
+            return Response(
+                status=status.HTTP_400_BAD_REQUEST, 
+                data={
+                    "reason": "An error has occurred while assigning a candidate"
+                    "to an intermediary of this order. Please try again."
+                }
+            )
+
+        order.status = OrderStatus.objects.get(step=order.status.step+1)
+        order.save()
+
+        data = return_data_for_deposit_status(order.url_id)
+        return Response(status=status.HTTP_201_CREATED, data=data)

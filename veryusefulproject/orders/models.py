@@ -1,5 +1,4 @@
 from uuid import uuid4
-import decimal
 
 from django.contrib.auth import get_user_model
 from django.core.validators import validate_slug
@@ -21,14 +20,27 @@ class Business(BaseModel):
 
 
 class BusinessUrl(BaseModel):
-    business = models.ForeignKey(Business, related_name="urls", on_delete=models.CASCADE)
-    currency = models.ForeignKey(FiatCurrency, related_name="urls", on_delete=models.SET_NULL, null=True)
+    business = models.ForeignKey(
+        Business, 
+        related_name="urls", 
+        on_delete=models.CASCADE
+    )
+    currency = models.ForeignKey(
+        FiatCurrency, 
+        related_name="urls", 
+        on_delete=models.SET_NULL, 
+        null=True
+    )
     url = models.URLField()
     desc = models.TextField()
 
 
 class BusinessLogo(BaseModel):
-    business = models.ForeignKey(Business, related_name="logos", on_delete=models.CASCADE)
+    business = models.ForeignKey(
+        Business, 
+        related_name="logos", 
+        on_delete=models.CASCADE
+    )
     image = models.ImageField(upload_to="images/logo/%Y/%m/%d")
 
 
@@ -43,7 +55,11 @@ class OrderAddress(BaseModel):
 
 
 class OrderStatus(BaseModel):
-    name = models.CharField(max_length=256, unique=True, validators=[validate_slug])
+    name = models.CharField(
+        max_length=256, 
+        unique=True, 
+        validators=[validate_slug]
+    )
     step = models.SmallIntegerField(unique=True)
     desc = models.TextField()
 
@@ -68,8 +84,17 @@ class OrderItemSeller(BaseModel):
 
 
 class OrderItem(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_items")
-    website_domain = models.ForeignKey(BusinessUrl, on_delete=models.SET_NULL, null=True)
+    order = models.ForeignKey(
+        Order, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name="order_items"
+    )
+    website_domain = models.ForeignKey(
+        BusinessUrl, 
+        on_delete=models.SET_NULL, 
+        null=True
+    )
     seller = models.ForeignKey(OrderItemSeller, on_delete=models.RESTRICT)
     currency = models.ForeignKey(FiatCurrency, on_delete=models.RESTRICT)
     image_url = models.URLField()
@@ -82,7 +107,11 @@ class OrderItem(BaseModel):
 
 
 class OrderTrackingNumber(BaseModel):
-    order_item = models.OneToOneField(OrderItem, null=True, on_delete=models.SET_NULL)
+    order_item = models.ForeignKey(
+        OrderItem, 
+        null=True, 
+        on_delete=models.SET_NULL
+    )
     tracking_number = models.CharField(max_length=128, validators=[validate_slug])
     shipping_company = models.ForeignKey(ShippingCompany, on_delete=models.RESTRICT)
 
@@ -93,15 +122,25 @@ class OrderDispute(BaseModel):
 
 
 class OrderDisputeMessage(BaseModel):
-    order_dispute = models.ForeignKey(OrderDispute, on_delete=models.RESTRICT, related_name="dispute_messages")
+    order_dispute = models.ForeignKey(
+        OrderDispute, 
+        on_delete=models.RESTRICT, 
+        related_name="dispute_messages"
+    )
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     message = models.TextField()
+    read = models.BooleanField(default=False)
 
 
 class OrderMessage(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.RESTRICT, related_name="messages")
+    order = models.ForeignKey(
+        Order, 
+        on_delete=models.RESTRICT, 
+        related_name="messages"
+    )
     user = models.ForeignKey(User, on_delete=models.RESTRICT)
     message = models.TextField()
+    read = models.BooleanField(default=False)
 
 
 class OrderIntermediaryCandidate(BaseModel):
@@ -114,9 +153,23 @@ class OrderIntermediaryCandidate(BaseModel):
 
 
 class OrderReview(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, related_name="order_reviews")
-    user = models.ForeignKey(User, on_delete=models.RESTRICT, related_name="order_review_user")
-    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="order_review_author")
+    order = models.ForeignKey(
+        Order, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name="order_reviews"
+    )
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.RESTRICT, 
+        related_name="order_review_user"
+    )
+    author = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        related_name="order_review_author"
+    )
     title = models.TextField()
     content = models.TextField()
     rating = models.DecimalField(max_digits=3, decimal_places=2)

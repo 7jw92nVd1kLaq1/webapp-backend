@@ -21,7 +21,7 @@ class OrderPaymentSerializer(DynamicFieldsSerializerMixin, serializers.ModelSeri
         fields = "__all__"
 
     def get_payment_methods(self, obj):
-        context = self.context.get("payment_method", {})
+        context = self.context.get("payment_methods", {})
         serializer = CryptoCurrencySerializer(obj.payment_methods.all(), many=True, context=self.context, **context)
         return serializer.data
 
