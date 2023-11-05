@@ -5,6 +5,7 @@ from rest_framework import status
 
 from django.db import transaction
 
+from veryusefulproject.core.mixins import PaginationHandlerMixin
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
 from ..paginations import NotificationPagination
@@ -49,12 +50,12 @@ class MarkNotificationAsReadView(UpdateAPIView):
                 )
 
 
-class RetrieveAllNotificationsView(RetrieveAPIView):
+class RetrieveAllNotificationsView(PaginationHandlerMixin, RetrieveAPIView):
     permission_classes = (IsAuthenticated,)
     authentication_classes = (JWTAuthentication,)
     pagination_class = NotificationPagination
 
-    def get(self, request, *args, **kwargs):
+    def retrieve(self, request, *args, **kwargs):
         """
         Returns a paginated list of notifications whose content includes, but is not 
         limited to, their uuid, notification, and the action code that triggered the 
@@ -110,7 +111,7 @@ class RetrieveNotificationsView(RetrieveAPIView):
     permission_classes = (IsAuthenticated,)
     authentication_classes = (JWTAuthentication,)
 
-    def get(self, request, *args, **kwargs):
+    def retrieve(self, request, *args, **kwargs):
         """
         Returns a list of notifications whose content includes their uuid, notification,
         and the action code that triggered the notification.
