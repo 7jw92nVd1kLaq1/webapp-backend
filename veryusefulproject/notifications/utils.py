@@ -42,8 +42,8 @@ def check_placeholder_substring(placeholder_substring):
 
 def parse_action_string(action_string):
     """
-    Returns a tuple of the indexes of every curly braces and its contents for mapping 
-    the models later on.
+    Returns a list of dictionaries, where each dictionary contains the role, name,
+    and field of the model that the placeholder substring will be replaced with.
     """
 
     temp_action_string_parsed_result = {"indexes": []}
@@ -97,21 +97,21 @@ def stringify_notification(notification_object):
     action_string_parsed_result = parse_action_string(action_string)
     for item in action_string_parsed_result:
         if item["role"] == "actor":
-            actor = MODEL_MAP[item["name"]].objects.get(id=actor[actor_count].id)
+            actor = MODEL_MAP[item["name"]].objects.get(id=actor[actor_count].entity_id)
             value_for_replacement = getattr(actor, item["field"])
-            replacement_strings.append(value_for_replacement)
+            replacement_strings.append(str(value_for_replacement))
             actor_count += 1
 
         elif item["role"] == "affected":
-            affected = MODEL_MAP[item["name"]].objects.get(id=affected[affected_count].id)
+            affected = MODEL_MAP[item["name"]].objects.get(id=affected[affected_count].entity_id)
             value_for_replacement = getattr(affected, item["field"])
-            replacement_strings.append(value_for_replacement)
+            replacement_strings.append(str(value_for_replacement))
             affected_count += 1
 
         elif item["role"] == "involved":
-            involved = MODEL_MAP[item["name"]].objects.get(id=involved[involved_count].id)
+            involved = MODEL_MAP[item["name"]].objects.get(id=involved[involved_count].entity_id)
             value_for_replacement = getattr(involved, item["field"])
-            replacement_strings.append(value_for_replacement)
+            replacement_strings.append(str(value_for_replacement))
             involved_count += 1
         else:
             raise Exception("Invalid role.")

@@ -63,7 +63,6 @@ class RetrieveAllNotificationsView(PaginationHandlerMixin, RetrieveAPIView):
         """
 
         defer = [
-            "notifiers",
             "modified_at",
             "notification_object__created_at",
             "notification_object__modified_at",
@@ -102,7 +101,10 @@ class RetrieveAllNotificationsView(PaginationHandlerMixin, RetrieveAPIView):
                     }
                 )
 
-            return self.get_paginated_response(return_data)
+            response = self.get_paginated_response(return_data)
+            response.status_code = status.HTTP_200_OK
+
+            return response
 
         return Response(data=return_data, status=status.HTTP_200_OK)
 
@@ -118,7 +120,6 @@ class RetrieveNotificationsView(RetrieveAPIView):
         """
 
         defer = [
-            "notifiers",
             "modified_at",
             "notification_object__created_at",
             "notification_object__modified_at",
@@ -132,9 +133,9 @@ class RetrieveNotificationsView(RetrieveAPIView):
         notifications = Notification.objects.select_related(
             "notification_object__action"
         ).prefetch_related(
-            "notificationobjectactor_set",
-            "notificationobjectaffected_set",
-            "notificationobjectinvolved_set",
+            "notification_object__notificationobjectactor_set",
+            "notification_object__notificationobjectaffectedentity_set",
+            "notification_object__notificationobjectinvolvedentity_set",
         ).filter(
             notifiers__username=user.get_username()
         ).order_by('-created_at').defer(*defer)
@@ -149,10 +150,10 @@ class RetrieveNotificationsView(RetrieveAPIView):
         for notification in notifications:
             return_data["notifications"].append(
                 {
-                    "id": str(notification.identifier),
-                    "notification": notification.notification_object.stringify(),
                     "action": notification.notification_object.action.code,
                     "created_at": notification.created_at,
+                    "id": str(notification.identifier),
+                    "notification": notification.notification_object.stringify(),
                     "read": notification.read,
                 }
             )
