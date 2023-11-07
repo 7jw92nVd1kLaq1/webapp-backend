@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 
 from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate
 
-
 MODEL_MAP = {}
 
 USER_MODEL_MAP = {

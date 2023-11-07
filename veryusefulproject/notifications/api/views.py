@@ -10,7 +10,6 @@ from veryusefulproject.users.api.authentication import JWTAuthentication
 
 from ..paginations import NotificationPagination
 from ..models import Notification
-from ..utils import return_affected_entities_unique_identifiers
 
 
 class MarkNotificationAsReadView(UpdateAPIView):
@@ -18,6 +17,10 @@ class MarkNotificationAsReadView(UpdateAPIView):
     authentication_classes = (JWTAuthentication,)
 
     def update(self, request, *args, **kwargs):
+        """
+        Marks a notification as read. If no notification identifier is provided, all
+        notifications are marked as read.
+        """
         if request.method != "PATCH":
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
@@ -78,11 +81,11 @@ class RetrieveAllNotificationsView(PaginationHandlerMixin, RetrieveAPIView):
 
         user = request.user
         notifications = Notification.objects.select_related(
-            "notification_object__action"
+            "notification_object__action__entity_type"
         ).prefetch_related(
-            "notificationobjectactor_set",
-            "notificationobjectaffected_set",
-            "notificationobjectinvolved_set",
+            "notification_object__notificationobjectactor_set",
+            "notification_object__notificationobjectaffected_set",
+            "notification_object__notificationobjectinvolved_set",
         ).filter(
             notifiers__username=user.get_username()
         ).order_by('-created_at').defer(*defer)
@@ -137,7 +140,7 @@ class RetrieveNotificationsView(RetrieveAPIView):
 
         user = request.user
         notifications = Notification.objects.select_related(
-            "notification_object__action"
+            "notification_object__action__entity_type"
         ).prefetch_related(
             "notification_object__notificationobjectactor_set",
             "notification_object__notificationobjectaffectedentity_set",
@@ -164,9 +167,7 @@ class RetrieveNotificationsView(RetrieveAPIView):
                     "id": str(notification.identifier),
                     "notification": notification.notification_object.stringify(),
                     "read": notification.read,
-                    "affected": return_affected_entities_unique_identifiers(
-                        notification
-                    ),
+                    "affected": notification.notification_object.return_affected_entities_unique_identifiers(),
                 }
             )
 
