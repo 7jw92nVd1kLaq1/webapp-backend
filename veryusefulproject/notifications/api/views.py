@@ -10,26 +10,30 @@ from veryusefulproject.users.api.authentication import JWTAuthentication
 
 from ..paginations import NotificationPagination
 from ..models import Notification
+from ..utils import return_affected_entities_unique_identifiers
 
 
 class MarkNotificationAsReadView(UpdateAPIView):
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
     def update(self, request, *args, **kwargs):
         if request.method != "PATCH":
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
         notification_identifier = request.data.get("id", None)
 
-        if not notification_identifier:
-            number_of_notifications_updated = Notification.objects.filter(
-                notifiers__username=request.user.get_username()
-            ).update(read=True)
-
-            return Response(
-                status=status.HTTP_200_OK,
-                data={"message": number_of_notifications_updated}
-            )
-        
         with transaction.atomic():
+            if not notification_identifier:
+                number_of_notifications_updated = Notification.objects.filter(
+                    notifiers__username=request.user.get_username()
+                ).update(read=True)
+
+                return Response(
+                    status=status.HTTP_200_OK,
+                    data={"message": number_of_notifications_updated}
+                )
+        
             try:
                 notification = Notification.objects.get(
                     notifiers__username=request.user.get_username(), 
@@ -119,6 +123,8 @@ class RetrieveNotificationsView(RetrieveAPIView):
         and the action code that triggered the notification.
         """
 
+        last_notification_identifier = request.query_params.get("id", None)
+
         defer = [
             "modified_at",
             "notification_object__created_at",
@@ -138,7 +144,7 @@ class RetrieveNotificationsView(RetrieveAPIView):
             "notification_object__notificationobjectinvolvedentity_set",
         ).filter(
             notifiers__username=user.get_username()
-        ).order_by('-created_at').defer(*defer)
+        ).order_by('-created_at').defer(*defer)[:3]
 
         return_data["total"] = Notification.objects.filter(
             notifiers__username=user.get_username()
@@ -148,6 +154,9 @@ class RetrieveNotificationsView(RetrieveAPIView):
         ).count()
 
         for notification in notifications:
+            if notification.identifier == last_notification_identifier:
+                break
+
             return_data["notifications"].append(
                 {
                     "action": notification.notification_object.action.code,
@@ -155,10 +164,10 @@ class RetrieveNotificationsView(RetrieveAPIView):
                     "id": str(notification.identifier),
                     "notification": notification.notification_object.stringify(),
                     "read": notification.read,
+                    "affected": return_affected_entities_unique_identifiers(
+                        notification
+                    ),
                 }
             )
-
-            if len(return_data) == 3:
-                break
 
         return Response(data=return_data, status=status.HTTP_200_OK)

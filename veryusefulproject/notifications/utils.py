@@ -18,6 +18,31 @@ MODEL_MAP.update(USER_MODEL_MAP)
 MODEL_MAP.update(ORDER_MODEL_MAP)
 
 
+MODEL_UNIQUE_IDENTIFIER_FIELD_MAP = {
+    "Order": "url_id",
+    "User": "username",
+}
+
+
+def return_affected_entities_unique_identifiers(notification):
+    """
+    Returns a list of unique identifiers of the affected entities of a notification.
+    """
+
+    result = []
+    affected_entities = notification.notification_object.notificationobjectaffectedentity_set.all()
+
+    for affected_entity in affected_entities:
+        field = MODEL_UNIQUE_IDENTIFIER_FIELD_MAP[affected_entity.entity_type.entity_name]
+        affected = MODEL_MAP[affected_entity.entity_type.entity_name].objects.get(
+            id=affected_entity.entity_id
+        )
+        affected_identity_unique_identifier = getattr(affected, field)
+        result.append(affected_identity_unique_identifier)
+
+    return result
+
+
 def check_placeholder_substring(placeholder_substring):
     """
     Returns a tuple of the role, name, and field of the model that the placeholder 
@@ -28,7 +53,8 @@ def check_placeholder_substring(placeholder_substring):
         raise Exception("Invalid placeholder substring.")
 
     role = placeholder_substring[1:placeholder_substring.find(":")]
-    name = placeholder_substring[placeholder_substring.find(":") + 1:placeholder_substring.rfind(":")]
+    name = placeholder_substring[
+        placeholder_substring.find(":") + 1:placeholder_substring.rfind(":")]
     field = placeholder_substring[placeholder_substring.rfind(":") + 1:-1]
 
     if not role in ["actor", "affected", "involved"]:
