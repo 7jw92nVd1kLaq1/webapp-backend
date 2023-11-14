@@ -8,7 +8,7 @@ from veryusefulproject.orders.views import UserOrderListView
 from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView, OrderUpdateView
 from veryusefulproject.request_marketplace.api.views import DisplayAvailableOffersView, SignUpOrderIntermediaryApplicantView
 from veryusefulproject.users.api.views import CheckJWTAccessTokenValidityView, UserRegistrationView, UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
-from veryusefulproject.notifications.api.views import RetrieveNotificationsView, MarkNotificationAsReadView
+from veryusefulproject.notifications.api.views import RetrieveNotificationsView, MarkNotificationAsReadView, MarkNotificationAsUnreadView
 
 if settings.DEBUG:
     router = DefaultRouter()
@@ -57,4 +57,5 @@ urlpatterns += (
 urlpatterns += (
     path("retrieve-notifications/", RetrieveNotificationsView.as_view(), name="retrieve-notifications"),
     path("mark-notification-as-read/", MarkNotificationAsReadView.as_view(), name="mark-notification-as-read"),
+    path("mark-notification-as-unread/", MarkNotificationAsUnreadView.as_view(), name="mark-notification-as-unread"),
 )

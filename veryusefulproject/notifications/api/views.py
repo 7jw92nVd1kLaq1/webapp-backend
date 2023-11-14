@@ -12,6 +12,52 @@ from ..paginations import NotificationPagination
 from ..models import Notification
 
 
+class MarkNotificationAsUnreadView(UpdateAPIView):
+    permission_classes = (IsAuthenticated,)
+    authentication_classes = (JWTAuthentication,)
+
+    def update(self, request, *args, **kwargs):
+        """
+        Marks a notification as unread. If no notification identifier is provided, invoke
+        a 400 response. If the notification is already unread, invoke a 200 response.
+        """
+        if request.method != "PATCH":
+            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        notification_identifier = request.query_params.get("id", None)
+
+        with transaction.atomic():
+            if not notification_identifier:
+                return Response(
+                    status=status.HTTP_400_BAD_REQUEST,
+                    data={"reason": "No notification identifier provided."}
+                )
+        
+            try:
+                notification = Notification.objects.get(
+                    notifiers__username=request.user.get_username(), 
+                    identifier=notification_identifier
+                )
+                if not notification.read:
+                    return Response(
+                        status=status.HTTP_200_OK,
+                        data={"message": "Notification already unread."}
+                    )
+                notification.read = False
+                notification.save(update_fields=["read"])
+                return Response(status=status.HTTP_200_OK)
+            except Notification.DoesNotExist:
+                return Response(
+                    status=status.HTTP_404_NOT_FOUND,
+                    data={"reason": "Notification not found."}
+                )
+            except:
+                return Response(
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    data={"reason": "An unknown error occurred."}
+                )
+
+
 class MarkNotificationAsReadView(UpdateAPIView):
     permission_classes = (IsAuthenticated,)
     authentication_classes = (JWTAuthentication,)
@@ -24,7 +70,7 @@ class MarkNotificationAsReadView(UpdateAPIView):
         if request.method != "PATCH":
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
-        notification_identifier = request.data.get("id", None)
+        notification_identifier = request.query_params.get("id", None)
 
         with transaction.atomic():
             if not notification_identifier:
@@ -42,8 +88,13 @@ class MarkNotificationAsReadView(UpdateAPIView):
                     notifiers__username=request.user.get_username(), 
                     identifier=notification_identifier
                 )
+                if notification.read:
+                    return Response(
+                        status=status.HTTP_200_OK,
+                        data={"message": "Notification already read."}
+                    )
                 notification.read = True
-                notification.save()
+                notification.save(update_fields=["read"])
                 return Response(status=status.HTTP_200_OK)
             except Notification.DoesNotExist:
                 return Response(
@@ -149,15 +200,12 @@ class RetrieveNotificationsView(RetrieveAPIView):
             notifiers__username=user.get_username()
         ).order_by('-created_at').defer(*defer)[:3]
 
-        return_data["total"] = Notification.objects.filter(
-            notifiers__username=user.get_username()
-        ).count()
         return_data["unread_total"] = Notification.objects.filter(
             notifiers__username=user.get_username(), read=False
         ).count()
 
         for notification in notifications:
-            if notification.identifier == last_notification_identifier:
+            if str(notification.identifier) == last_notification_identifier:
                 break
 
             return_data["notifications"].append(

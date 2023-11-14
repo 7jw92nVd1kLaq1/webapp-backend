@@ -15,4 +15,7 @@ class BaseModel(models.Model):
             force_update=False,
             using=None,
             update_fields=None) -> None:
+        if update_fields:
+            if not 'modified_at' in update_fields:
+                update_fields.append('modified_at')
         return super().save(force_insert, force_update, using, update_fields)

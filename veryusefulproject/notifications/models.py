@@ -12,7 +12,7 @@ User = get_user_model()
 
 
 class EntityType(BaseModel):
-    entity_name = models.CharField(max_length=128)
+    entity_name = models.CharField(max_length=128, unique=True)
 
     def __str__(self):
         return "EntityType: {}".format(self.id)
@@ -194,23 +194,44 @@ class NotificationObject(BaseModel):
         return self.notificationobjectinvolvedentity_set.all()
 
     def add_actor(self, entity_type, entity_id):
+        if not MODEL_MAP.get(entity_type, None):
+            raise Exception("Invalid entity type.")
+        
+        entity_does_exist = MODEL_MAP[entity_type].objects.filter(id=entity_id).exists()
+        if not entity_does_exist:
+            raise Exception("Invalid entity id.")
+
         return NotificationObjectActor.objects.create(
             notification_object=self,
-            entity_type=entity_type,
+            entity_type=EntityType.objects.get(entity_name=entity_type),
             entity_id=entity_id
         )
 
     def add_affected_entity(self, entity_type, entity_id):
+        if not MODEL_MAP.get(entity_type, None):
+            raise Exception("Invalid entity type.")
+        
+        entity_does_exist = MODEL_MAP[entity_type].objects.filter(id=entity_id).exists()
+        if not entity_does_exist:
+            raise Exception("Invalid entity id.")
+
         return NotificationObjectAffectedEntity.objects.create(
             notification_object=self,
-            entity_type=entity_type,
+            entity_type=EntityType.objects.get(entity_name=entity_type),
             entity_id=entity_id
         )
 
     def add_involved_entity(self, entity_type, entity_id):
+        if not MODEL_MAP.get(entity_type, None):
+            raise Exception("Invalid entity type.")
+        
+        entity_does_exist = MODEL_MAP[entity_type].objects.filter(id=entity_id).exists()
+        if not entity_does_exist:
+            raise Exception("Invalid entity id.")
+
         return NotificationObjectInvolvedEntity.objects.create(
             notification_object=self,
-            entity_type=entity_type,
+            entity_type=EntityType.objects.get(entity_name=entity_type),
             entity_id=entity_id
         )
 
@@ -341,6 +362,12 @@ class Notification(BaseModel):
     )
     read = models.BooleanField(default=False)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['identifier']),
+            models.Index(fields=['-created_at']),
+        ]
+
     def __str__(self):
         return "Notification: {}".format(self.id)
 
@@ -353,7 +380,6 @@ class Notification(BaseModel):
     def remove_notifier(self, user):
         self.notifiers.remove(user)
 
-    def get_actor(self):
-        return self.actor
-
-
+    def toggle_read(self):
+        self.read = not self.read
+        self.save(update_fields=['read'])
