@@ -6,10 +6,10 @@ from rest_framework.response import Response
 
 from ..paginations import ListOrderPagination
 from ..tasks import get_product_info, create_order
-from ..utils import return_data_for_finding_intermediary, return_data_for_deposit_status, update_order_additional_info, update_order_intermediary
+from ..utils import return_data_for_finding_intermediary, update_order_additional_info, update_order_intermediary
 
 from veryusefulproject.core.mixins import PaginationHandlerMixin
-from veryusefulproject.orders.models import Order, OrderAddress, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderStatus
+from veryusefulproject.orders.models import Order
 from veryusefulproject.orders.api.serializers import OrderSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
