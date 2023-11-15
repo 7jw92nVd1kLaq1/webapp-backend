@@ -24,4 +24,3 @@ class OrderPaymentInvoice(BaseModel):
     payment = models.ForeignKey(OrderPayment, on_delete=models.CASCADE)
     invoice_id = models.TextField()
     order_id = models.TextField()
-
