@@ -322,6 +322,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'veryusefulproject.currencies.tasks.update_crypto_currency_info',
         'schedule': crontab(hour="*", minute=0),
     },
+    'checkOrderPaymentStatus': {
+        'task': 'veryusefulproject.payments.tasks.check_if_invoices_settled',
+        'schedule': crontab(minute='*/10'),
+    }
 }
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#worker-send-task-events
 CELERY_WORKER_SEND_TASK_EVENTS = True

@@ -1,13 +1,15 @@
 import requests
 import shutil
-import sys
 
 from django.conf import settings
 from json import dumps
 import requests
 
 def create_command_payload_and_send(method, data, channel):
-    headers  = {'Content-type': 'application/json', 'Authorization': 'apikey ' + settings.CENTRIFUGO_API_KEY}
+    headers  = {
+        'Content-type': 'application/json', 
+        'Authorization': 'apikey ' + settings.CENTRIFUGO_API_KEY
+    }
     command = {
         "method": method,
         "params": {

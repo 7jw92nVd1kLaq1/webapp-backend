@@ -60,5 +60,12 @@ CELERY_TASK_EAGER_PROPAGATES = True
 # ------------------------------------------------------------------------------
 
 FRONTEND_URL = "https://localhost:5173/"
+
+# BTC Pay Server
+BTCPAYSERVER_URL = env("BTCPAYSERVER_URL")
+BTCPAYSERVER_TOKEN = env("BTCPAYSERVER_TOKEN")
+BTCPAYSERVER_STORE_ID = env("BTCPAYSERVER_STORE_ID")
+PAYMENTSUCCESSWEBHOOK_SECRET = env("PAYMENTSUCCESSWEBHOOK_SECRET")
+#--------------------------------------------------------------------------------
 PASSWORD_REQUIREMENT_REGEX = "^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$"
 USER_SUSPENDED_ROLE_NAME = "Suspended"

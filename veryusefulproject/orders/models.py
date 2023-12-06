@@ -71,6 +71,11 @@ class Order(BaseModel):
 
     def set_additional_request(self, value):
         self.additional_request = escape(value)
+        self.save(update_fields=["additional_request"])
+
+    def set_next_status(self):
+        self.status = OrderStatus.objects.get(step=self.status.step + 1)
+        self.save(update_fields=["status"])
 
     class Meta:
         indexes = [

@@ -114,7 +114,7 @@ def create_order(data, username):
             country=addr["country"]
         )
         order = Order.objects.create(
-            status=OrderStatus.objects.get(step=1),
+            status=OrderStatus.objects.get(step=0),
             additional_request=data['additionalRequest'],
         )
 
