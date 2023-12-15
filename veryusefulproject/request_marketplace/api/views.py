@@ -12,7 +12,7 @@ from django.views.decorators.cache import cache_page
 
 from veryusefulproject.core.mixins import PaginationHandlerMixin
 from veryusefulproject.currencies.utils import get_orders_cryptocurrency_rate
-from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderItem, OrderReview
+from veryusefulproject.orders.models import Order, OrderIntermediaryCandidate, OrderItem, OrderReview, OrderIntemediaryCandidateOffer
 from veryusefulproject.orders.api.serializers import OrderSerializer, OrderIntermediaryCandidateSerializer
 from veryusefulproject.users.api.authentication import JWTAuthentication
 
@@ -51,8 +51,7 @@ class SignUpOrderIntermediaryApplicantView(CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
                 data={"reason": "You are a customer of this order."}
             )
-
-        if order.status.step != 1:
+        if order.status.step != 0:
             print("Order Step")
             return Response(
                 status=status.HTTP_400_BAD_REQUEST,
@@ -74,10 +73,13 @@ class SignUpOrderIntermediaryApplicantView(CreateAPIView):
             )
 
         try:
-            OrderIntermediaryCandidate.objects.create(
+            candidate = OrderIntermediaryCandidate.objects.create(
                 order=order,
                 user=user,
-                rate=(rate/Decimal(100))
+            )
+            OrderIntemediaryCandidateOffer.objects.create(
+                order_intermediary_candidate=candidate,
+                rate=rate
             )
             return Response(
                 status=status.HTTP_201_CREATED,
@@ -129,7 +131,7 @@ class DisplayAvailableOffersView(PaginationHandlerMixin, APIView):
                 "order_items",
                 queryset=OrderItem.objects.all().only("name", "price")
             )
-        ).only(*only_fields).filter(status__step=1).order_by("-created_at")
+        ).only(*only_fields).filter(status__step=0).order_by("-created_at")
         """
         queryset = Order.objects.select_related(
             "orderaddresslink__address",

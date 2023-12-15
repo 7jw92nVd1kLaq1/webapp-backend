@@ -4,13 +4,13 @@ import json
 from hashlib import blake2b
 
 from veryusefulproject.currencies.models import FiatCurrency
-from veryusefulproject.orders.models import BusinessUrl, OrderItem, OrderItemSeller, Order, OrderIntermediaryCandidate, OrderAddress, OrderIntermediaryLink, OrderStatus
+from veryusefulproject.orders.models import BusinessUrl, OrderItem, OrderItemSeller, Order, OrderIntermediaryCandidate, OrderIntemediaryCandidateOffer, OrderAddress, OrderIntermediaryLink, OrderStatus
 from veryusefulproject.orders.api.serializers import OrderSerializer
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.db.models import Avg, Prefetch
+from django.db.models import Avg, Count, Prefetch
 from django.utils.html import escape
 
 from rest_framework import status
@@ -168,9 +168,22 @@ def return_data_for_finding_intermediary(order_id):
         "order_items",
         Prefetch(
             "orderintermediarycandidate_set",
-            queryset=OrderIntermediaryCandidate.objects.select_related("user").filter(
-                order__url_id=order_id).only("user", "user__username"),
-            to_attr="intermediary_candidates"
+            queryset=OrderIntermediaryCandidate.objects.prefetch_related(
+                Prefetch(
+                    "offers",
+                    queryset=OrderIntemediaryCandidateOffer.objects.filter(
+                        order_intermediary_candidate__order__url_id=order_id
+                    ).only("rate", "created_at")
+                )
+            ).select_related("user").filter(
+                order__url_id=order_id
+            ).only(
+                "user", 
+                "user__username", 
+                "created_at"
+            ).order_by(
+                "-created_at"
+            ),
         )
     ).select_related(
         "orderaddresslink__address",
@@ -214,31 +227,53 @@ def return_data_for_finding_intermediary(order_id):
                     "modified_at"
                 ]
             },
-            "payment_methods": {"fields": ["ticker", "cryptocurrencyrate_set"]},
-            "cryptocurrencyrate_set": {
-                "created_at": order_qs.first().created_at, "fields": ["rate"]
+            "payment_methods": {
+                "fields": ["ticker", "cryptocurrencyrate_set"]
             },
-            "orderintermediarycandidate_set": {"fields": ["user", "rate"]},
+            "cryptocurrencyrate_set": {
+                "created_at": order_qs.first().created_at, 
+                "fields": ["rate"]
+            },
+            "orderintermediarycandidate_set": {
+                "fields": [
+                    "user", 
+                    "created_at", 
+                    "accepted",
+                    "offers"
+                ]
+            },
+            "offers": {
+                "fields": ["rate", "created_at"]
+            },
             "user": {"fields": ["username"]}
         }
     )
 
     data = serializer.data
-    
+
     ## Query a list of intermediaries and each of its average ratings
-    intermediaries = [intermediary['user']['username'] 
-        for intermediary in serializer.data["orderintermediarycandidate_set"]
-    ]
+    intermediaries = list(intermediary['user']['username'] 
+        for intermediary in data["orderintermediarycandidate_set"]
+    )
     users = User.objects.annotate(
-        avg_rating=Avg("order_review_user__rating")
+        avg_rating=Avg("order_review_user__rating"),
+        review_count=Count("order_review_user")
     ).filter(username__in=intermediaries).only("username")
-    
-    for each in users:
-        for index in range(len(data['orderintermediarycandidate_set'])):
-            if data['orderintermediarycandidate_set'][index]['user']['username'] == each.username:
-                data['orderintermediarycandidate_set'][index]['user']['average_rating'] = each.avg_rating
+
+    ## Add the average ratings to the data
+    for intermediary in range(len(data["orderintermediarycandidate_set"])):
+        for user in users:
+            if data["orderintermediarycandidate_set"][intermediary]["user"]["username"] == user.username:
+                data["orderintermediarycandidate_set"][
+                    intermediary
+                ]["user"]["avg_rating"] = user.avg_rating
+
+                data["orderintermediarycandidate_set"][
+                    intermediary
+                ]["user"]["review_count"] = user.review_count
+
                 break
-                  
+    
     return data 
 
 
@@ -301,7 +336,6 @@ def return_data_for_deposit_status(order_id):
     return serializer.data
 
 
-
 def update_order_additional_info(order, data):
     if order.status.step != 1:
         return Response(
@@ -352,7 +386,8 @@ def update_order_intermediary(order, data):
         )
 
     candidate = OrderIntermediaryCandidate.objects.select_related("user").filter(
-        order=order, user__username=data.get("username")
+        order=order, 
+        user__username=data.get("username")
     )
 
     if not candidate.exists():

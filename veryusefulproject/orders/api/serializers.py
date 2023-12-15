@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from veryusefulproject.core.mixins import DynamicFieldsSerializerMixin
-from veryusefulproject.orders.models import Business, BusinessLogo, Order, OrderAddress, OrderAddressLink, OrderCustomerLink, OrderDispute, OrderDisputeMessage, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderItem, OrderMessage, OrderPaymentLink, OrderReview, OrderStatus, OrderTrackingNumber
+from veryusefulproject.orders.models import Business, BusinessLogo, Order, OrderAddress, OrderAddressLink, OrderCustomerLink, OrderDispute, OrderDisputeMessage, OrderIntermediaryCandidate, OrderIntermediaryLink, OrderItem, OrderCustomerMessage, OrderPaymentLink, OrderReview, OrderStatus, OrderTrackingNumber, OrderIntermediaryCandidateMessage, OrderIntemediaryCandidateOffer
 from veryusefulproject.payments.api.serializers import OrderPaymentSerializer
 from veryusefulproject.users.api.serializers import UserSerializer
 
@@ -84,10 +84,32 @@ class OrderDisputeSerializer(DynamicFieldsSerializerMixin, serializers.ModelSeri
 
 class OrderIntermediaryCandidateSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
     user = serializers.SerializerMethodField()
+    offers = serializers.SerializerMethodField()
+    intermediary_messages = serializers.SerializerMethodField()
     
     class Meta:
         model = OrderIntermediaryCandidate
         fields = '__all__'
+
+    def get_offers(self, obj):
+        context = self.context.get("offers", {})
+        serializer = OrderIntermediaryCandidateOfferSerializer(
+            obj.offers.all(),
+            many=True, 
+            context=self.context,
+            **context
+        )
+        return serializer.data
+
+    def get_intermediary_messages(self, obj):
+        context = self.context.get("intermediary_messages", {})
+        serializer = OrderIntermediaryCandidateMessageSerializer(
+            obj.intermediary_messages.all(),
+            many=True, 
+            context=self.context,
+            **context
+        )
+        return serializer.data
 
     def get_user(self, obj):
         context = self.context.get("user", {})
@@ -128,12 +150,24 @@ class OrderTrackingNumberSerializer(DynamicFieldsSerializerMixin, serializers.Mo
         fields = '__all__'
 
 
-class OrderMessageSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
+class OrderCustomerMessageSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
     user = serializers.SlugRelatedField(slug_field="username", read_only=True)
 
     class Meta:
-        model = OrderMessage
+        model = OrderCustomerMessage
         exclude = ['order']
+
+
+class OrderIntermediaryCandidateOfferSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = OrderIntemediaryCandidateOffer
+        exclude = ['order_intermediary_candidate']
+
+
+class OrderIntermediaryCandidateMessageSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
+    class Meta:
+        model = OrderIntermediaryCandidateMessage
+        exclude = ['order_intermediary_candidate']
 
 
 class OrderPaymentLinkSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer):
@@ -157,7 +191,6 @@ class OrderSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer)
     intermediary = serializers.SerializerMethodField()
     payment = serializers.SerializerMethodField()
     orderdispute_set = OrderDisputeSerializer(fields_exclude=['order', 'mediator'])
-    messages = OrderMessageSerializer(many=True, required=False)
     order_items = serializers.SerializerMethodField()
     order_reviews = serializers.SerializerMethodField()
     orderintermediarycandidate_set = serializers.SerializerMethodField()
@@ -169,7 +202,7 @@ class OrderSerializer(DynamicFieldsSerializerMixin, serializers.ModelSerializer)
     def get_orderintermediarycandidate_set(self, obj):
         context = self.context.get("orderintermediarycandidate_set", {})
         serializer = OrderIntermediaryCandidateSerializer(
-            obj.orderintermediarycandidate_set, 
+            obj.orderintermediarycandidate_set.all(),
             many=True, 
             context=self.context,
             **context

@@ -137,24 +137,49 @@ class OrderDisputeMessage(BaseModel):
     read = models.BooleanField(default=False)
 
 
-class OrderMessage(BaseModel):
+class OrderIntermediaryCandidate(BaseModel):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    accepted = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['order'],
+                condition=models.Q(accepted=True),
+                name='unique_accepted_order'
+            ),
+        ]
+
+
+class OrderCustomerMessage(BaseModel):
     order = models.ForeignKey(
         Order, 
         on_delete=models.RESTRICT, 
-        related_name="messages"
+        related_name="customer_messages"
     )
-    user = models.ForeignKey(User, on_delete=models.RESTRICT)
+    recipient = models.ForeignKey(OrderIntermediaryCandidate, on_delete=models.RESTRICT)
     message = models.TextField()
     read = models.BooleanField(default=False)
 
 
-class OrderIntermediaryCandidate(BaseModel):
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+class OrderIntemediaryCandidateOffer(BaseModel):
+    order_intermediary_candidate = models.ForeignKey(
+        OrderIntermediaryCandidate, 
+        on_delete=models.RESTRICT, 
+        related_name="offers"
+    )
     rate = models.DecimalField(max_digits=3, decimal_places=3)
 
-    class Meta:
-        unique_together = ["order", "user"]
+
+class OrderIntermediaryCandidateMessage(BaseModel):
+    order_intermediary_candidate = models.ForeignKey(
+        OrderIntermediaryCandidate, 
+        on_delete=models.RESTRICT, 
+        related_name="intermediary_messages"
+    )
+    message = models.TextField()
+    read = models.BooleanField(default=False)
 
 
 class OrderReview(BaseModel):
