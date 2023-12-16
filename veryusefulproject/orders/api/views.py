@@ -295,12 +295,6 @@ class OrderMessagesRetrieveView(RetrieveAPIView):
                 data={"reason": "No intermediary with the given username exists."}
             )
 
-        # The following code prepares the data to be returned.
-        data = {
-            "order_id": order.url_id,
-            "messages": []
-        }
-
         # The following code adds the customer messages to the data.
         messages = []
         customer_messages = OrderCustomerMessageSerializer(
@@ -320,7 +314,7 @@ class OrderMessagesRetrieveView(RetrieveAPIView):
         messages.extend(intermediary_messages)
 
         # The following code sorts the messages by their creation date.
-        data["messages"] = sorted(messages, key=lambda x: x["created_at"])
+        data = sorted(messages, key=lambda x: x["created_at"])
         return Response(status=status.HTTP_200_OK, data=data)
 
 

@@ -6,6 +6,7 @@ from config import celery_app
 
 from .models import OrderPaymentInvoice
 
+from datetime import datetime, timedelta
 from requests import get, post
 from uuid import UUID
 
@@ -17,7 +18,8 @@ from django.db.models import Prefetch
 @celery_app.task()
 def check_if_invoices_settled():
     orders = Order.objects.filter(
-        status=OrderStatus.objects.get(step=1)
+        status__step=1,
+        created_at__gte=datetime.now() - timedelta(days=1)
     ).select_related(
         "status",
         "orderpaymentlink__payment",
@@ -30,8 +32,11 @@ def check_if_invoices_settled():
         )
     ).only(
         "url_id",
-        "status",
     )
+
+    if not orders.exists():
+        print("No orders found")
+        return
 
     for order in orders:
         if not getattr(order, "orderintermediarylink", None):

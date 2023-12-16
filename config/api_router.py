@@ -5,7 +5,7 @@ from rest_framework.routers import DefaultRouter, SimpleRouter
 from veryusefulproject.core.api.views import CsrfView
 from veryusefulproject.management.api.views import AdminUsersViewSet
 from veryusefulproject.orders.views import UserOrderListView
-from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView, OrderUpdateView
+from veryusefulproject.orders.api.views import OrderCreationView, RequestItemInfoView, ListUserOrderView, OrderRetrieveView, OrderUpdateView, OrderMessagesRetrieveView, OrderIntermediaryMessageCreateView, OrderCustomerMessageCreateView
 from veryusefulproject.payments.api.views import GetInvoiceView, ConfirmSuccessfulPaymentView
 from veryusefulproject.request_marketplace.api.views import DisplayAvailableOffersView, SignUpOrderIntermediaryApplicantView
 from veryusefulproject.users.api.views import CheckJWTAccessTokenValidityView, UserRegistrationView, UserViewSet, CheckJWTRefreshTokenValidityView, DeleteJWTTokensView, RenewJWTAccessTokenView, RenewJWTSubscriptionTokenView, RequestJWTTokenView
@@ -45,7 +45,10 @@ urlpatterns += (
     path("list-order/", ListUserOrderView.as_view(), name="list-order"),
     path("test-order/", UserOrderListView.as_view(), name="test-order"),
     path("order-detail/<uuid:pk>/", OrderRetrieveView.as_view(), name="order-detail"),
-    path("modify-order/", OrderUpdateView.as_view(), name="modify-order")
+    path("modify-order/", OrderUpdateView.as_view(), name="modify-order"),
+    path("order-messages/<uuid:pk>/", OrderMessagesRetrieveView.as_view(), name="order-messages"),
+    path("order-intermediary-message/", OrderIntermediaryMessageCreateView.as_view(), name="order-intermediary-message"),
+    path("order-customer-message/", OrderCustomerMessageCreateView.as_view(), name="order-customer-message"),
 )
 
 # Payment-Related Views
